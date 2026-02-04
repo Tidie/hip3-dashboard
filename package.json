@@ -1,0 +1,8 @@
+{
+  "name": "hip3-analytics",
+  "version": "1.0.0",
+  "description": "HIP-3 Analytics Dashboard for Hyperliquid",
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}
