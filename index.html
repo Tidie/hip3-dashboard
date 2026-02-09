@@ -1,0 +1,3471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIP-3 Markets | Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #080d12;
+            --bg-secondary: #0e151c;
+            --bg-tertiary: #151d26;
+            --bg-hover: #1a2430;
+            --text-primary: #edf2f7;
+            --text-secondary: #94a3b8;
+            --text-muted: #5a6a7e;
+            --border: #1c2736;
+            --accent-cyan: #00e5cc;
+            --accent-cyan-dim: rgba(0, 229, 204, 0.15);
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --glow-cyan: 0 0 20px rgba(0, 229, 204, 0.15);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        /* Subtle background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 0%, rgba(0, 229, 204, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        select {
+            font-family: 'Outfit', sans-serif;
+        }
+        
+        select option {
+            background: #151d26;
+            color: #edf2f7;
+            font-family: 'Outfit', sans-serif;
+            padding: 8px 12px;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: rgba(14, 21, 28, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+        }
+
+        .logo-mascot {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            object-fit: cover;
+            filter: drop-shadow(0 0 8px rgba(0, 229, 204, 0.3));
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .logo-text .brand {
+            font-size: 1.125rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent-cyan), #7dd3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text .sub {
+            font-size: 0.625rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .nav {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--bg-tertiary);
+            padding: 0.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.8125rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .nav-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.04);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-cyan);
+            color: #080d12;
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(0, 229, 204, 0.3);
+        }
+
+        .refresh-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-left: 0.75rem;
+            transition: opacity 0.3s;
+        }
+
+        .refresh-indicator .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== FILTERS ===== */
+        .filters-bar {
+            background: var(--bg-secondary);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.375rem;
+            align-items: center;
+        }
+
+        .filter-label {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-right: 0.25rem;
+        }
+
+        .filter-btn {
+            padding: 0.375rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            color: #080d12;
+            font-weight: 600;
+        }
+
+        .search-box { flex: 1; min-width: 200px; }
+
+        .search-input {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: 'Outfit', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(255,255,255,0.06);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.375rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+        }
+
+        .chart-container { position: relative; height: 400px; }
+        .chart-container.large { height: 500px; }
+        .chart-container.medium { height: 280px; }
+
+        /* ===== TABLE ===== */
+        table { width: 100%; border-collapse: collapse; }
+
+        thead { background: var(--bg-tertiary); }
+
+        th {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+            white-space: nowrap;
+        }
+
+        th.sortable:hover { color: var(--text-primary); }
+        th.sortable::after { content: ' \2195'; font-size: 0.625rem; opacity: 0.3; }
+        th.sortable.sort-asc::after { content: ' \2191'; opacity: 1; color: var(--accent-cyan); }
+        th.sortable.sort-desc::after { content: ' \2193'; opacity: 1; color: var(--accent-cyan); }
+        th.sortable.sort-asc, th.sortable.sort-desc { color: var(--accent-cyan); }
+        th.right { text-align: right; }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+
+        tr:hover { background: var(--bg-hover); }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge.xyz { background: rgba(0, 229, 204, 0.12); color: var(--accent-cyan); }
+        .badge.vntl { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+        .badge.km { background: rgba(245, 158, 11, 0.12); color: var(--accent-orange); }
+        .badge.cash { background: rgba(16, 185, 129, 0.12); color: var(--accent-green); }
+        .badge.flx { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+        .badge.hyna { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+        .badge.stock { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .badge.commodity { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); }
+        .badge.crypto { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+        .badge.index { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+
+        .number-cell {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            font-size: 0.8125rem;
+        }
+
+        .positive { color: var(--accent-green); }
+        .negative { color: var(--accent-red); }
+
+        /* ===== VIEWS ===== */
+        .view { display: none; animation: viewFade 0.3s ease-out; }
+        .view.active { display: block; }
+
+        @keyframes viewFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* ===== LOADING ===== */
+        .loading { text-align: center; padding: 3rem; color: var(--text-secondary); }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+
+        .fade-in { animation: viewFade 0.3s ease-in; }
+
+        /* ===== OVERVIEW ===== */
+        .overview-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: rgba(0, 229, 204, 0.2);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-card .stat-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== COMPARE ===== */
+        .compare-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin-bottom: 1.5rem;
+        }
+
+        .compare-header-left h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .compare-header-left p { font-size: 0.8125rem; color: var(--text-muted); }
+
+        .compare-select, .risk-select {
+            padding: 0.625rem 2.5rem 0.625rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6a7e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            transition: border-color 0.2s;
+        }
+
+        .compare-select:focus, .risk-select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .compare-select option, .risk-select option {
+            background: #151d26;
+            color: #edf2f7;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .deployer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .deployer-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .deployer-card:hover { border-color: rgba(255,255,255,0.1); }
+        .deployer-card .dep-name { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .deployer-card .dep-value { font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 0.25rem; }
+        .deployer-card .dep-ticker { font-size: 0.8125rem; color: var(--text-muted); }
+
+        .compare-table-wrapper {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .compare-table-title { font-size: 1rem; font-weight: 600; padding: 1.25rem 1.5rem 0.75rem; }
+
+        .deployer-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        /* ===== RISK SCORE ===== */
+        .risk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+
+        .risk-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .score-ring-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-ring { position: relative; width: 180px; height: 180px; margin-bottom: 1rem; }
+        .score-ring svg { transform: rotate(-90deg); width: 180px; height: 180px; }
+        .score-ring .ring-bg { fill: none; stroke: var(--bg-tertiary); stroke-width: 10; }
+        .score-ring .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease, stroke 0.4s ease; }
+        .score-ring .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .score-ring .score-number { font-size: 2.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+        .score-ring .score-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem; }
+
+        .score-grade {
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.25rem 1rem;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .risk-indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        .risk-indicator {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem;
+        }
+
+        .ri-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+        .ri-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+
+        .ri-badge {
+            font-size: 0.625rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .ri-badge.good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .ri-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .ri-badge.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+        .ri-value { font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 0.25rem; }
+        .ri-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+        .ri-bar-track { width: 100%; height: 5px; background: var(--bg-tertiary); border-radius: 3px; margin-top: 0.75rem; overflow: hidden; }
+        .ri-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+        /* Liquidation Wall */
+        .liq-wall-container { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+        .liq-wall-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .liq-wall-sub { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .liq-wall-chart { display: flex; flex-direction: column; gap: 0.375rem; position: relative; }
+
+        .liq-row { display: grid; grid-template-columns: 70px 1fr 70px; gap: 0.5rem; align-items: center; font-size: 0.75rem; height: 22px; }
+        .liq-price { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--text-secondary); text-align: right; }
+        .liq-bar-track { height: 100%; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; position: relative; }
+        .liq-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+        .liq-bar.long { background: linear-gradient(90deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.7)); }
+        .liq-bar.short { background: linear-gradient(90deg, rgba(239, 68, 68, 0.7), rgba(239, 68, 68, 0.3)); }
+        .liq-amount { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--text-muted); font-size: 0.6875rem; }
+        .liq-current-marker { background: var(--accent-cyan); height: 2px; position: relative; margin: 0.25rem 0; }
+        .liq-current-label { position: absolute; right: 0; top: -8px; font-size: 0.625rem; color: var(--accent-cyan); font-weight: 600; background: var(--bg-secondary); padding: 0 0.25rem; }
+
+        .risk-empty { text-align: center; color: var(--text-muted); padding: 4rem 2rem; }
+        .risk-empty p { margin-bottom: 0.5rem; }
+
+        /* ===== HYPURR EMPTY STATES ===== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .empty-state img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin-bottom: 1.25rem;
+            filter: drop-shadow(0 0 20px rgba(0, 229, 204, 0.15));
+            animation: floatBounce 3s ease-in-out infinite;
+        }
+
+        @keyframes floatBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .empty-state h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            max-width: 340px;
+        }
+
+        /* ===== TRACKER / AIRDROP ===== */
+        .tracker-hero {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tracker-hero-img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 12px rgba(0, 229, 204, 0.2));
+            flex-shrink: 0;
+        }
+
+        .claim-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(0, 229, 204, 0.03) 100%);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .claim-card::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), transparent);
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-inner {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .footer-mascot {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            opacity: 0.6;
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .footer-text a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .risk-grid { grid-template-columns: 1fr; }
+            .risk-indicators { grid-template-columns: 1fr; }
+        }
+
+        #leaderboardPagination button {
+            padding: 0.375rem 0.625rem;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            font-family: 'Outfit', sans-serif;
+            border: 1px solid #1c2736;
+            background: #151d26;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.15s;
+            outline: none;
+        }
+        #leaderboardPagination button:hover:not(:disabled) {
+            background: #1c2736;
+            border-color: #2a3a4e;
+        }
+        #leaderboardPagination button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        #leaderboardPagination button.pg-active {
+            background: #00c2ff;
+            border-color: #00c2ff;
+            color: #080d12;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 0.75rem 1rem; }
+            .container { padding: 1rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .overview-stats { grid-template-columns: 1fr 1fr; }
+            .nav { overflow-x: auto; }
+            .compare-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .deployer-cards { grid-template-columns: 1fr; }
+            .tracker-hero { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <img src="images/samurai.png" alt="Hypurr" class="logo-mascot" />
+                <div class="logo-text">
+                    <span class="brand">HIP-3 Markets</span>
+                    <span class="sub">Hyperliquid Analytics</span>
+                </div>
+                <span class="refresh-indicator" id="refreshIndicator"><span class="dot"></span> Live</span>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-view="overview">Overview</button>
+                <button class="nav-btn" data-view="markets">Markets</button>
+                <button class="nav-btn" data-view="compare">Compare</button>
+                <button class="nav-btn" data-view="fundingrate">Funding</button>
+                <button class="nav-btn" data-view="riskscore">Risk Score</button>
+                <button class="nav-btn" data-view="liquidation">Liquidation</button>
+                <button class="nav-btn" data-view="airdrop">Tracker</button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- ===== OVERVIEW ===== -->
+        <div class="view active" id="overview">
+            <div class="overview-stats" id="overviewStats">
+                <div class="stat-card">
+                    <div class="stat-label">Total Markets</div>
+                    <div class="stat-value" id="statMarkets">--</div>
+                    <div class="stat-sub" id="statDeployers">-- deployers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">24H Volume</div>
+                    <div class="stat-value" id="statVolume">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Open Interest</div>
+                    <div class="stat-value" id="statOI">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg 24H Fees (HIP-3)</div>
+                    <div class="stat-value" id="statFees">--</div>
+                </div>
+            </div>
+
+            <!-- Daily Trading Volume -->
+            <div class="card" style="margin-bottom: 1rem; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div>
+                        <div class="card-title">Daily Trading Volume</div>
+                        <div class="card-subtitle">Volume across all DEXes · <span style="color: var(--text-muted); font-style: italic;">excludes liquidations</span></div>
+                    </div>
+                    <div style="display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                        <button id="volModeDaily" onclick="setVolMode('daily')" style="padding: 0.375rem 0.875rem; font-size: 0.75rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: none; background: var(--accent-cyan); color: #080d12; transition: all 0.2s;">Daily</button>
+                        <button id="volModeCumul" onclick="setVolMode('cumulative')" style="padding: 0.375rem 0.875rem; font-size: 0.75rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: none; background: var(--bg-tertiary); color: var(--text-muted); transition: all 0.2s;">Cumulative</button>
+                    </div>
+                </div>
+                <div class="chart-container large"><canvas id="dailyVolumeChart"></canvas></div>
+                <!-- Custom tooltip -->
+                <div id="volTooltip" style="display:none; position:absolute; pointer-events:none; z-index:100; background:rgba(14,21,28,0.96); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:0.875rem 1rem; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,0.5); min-width:200px;"></div>
+                <!-- Range selector -->
+                <div style="position: relative; height: 50px; margin-top: 0.5rem;">
+                    <canvas id="dailyVolOverview"></canvas>
+                    <div id="rangeSelector" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; cursor: default;">
+                        <div id="rangeMask" style="position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.6); pointer-events: none;"></div>
+                        <div id="rangeMaskR" style="position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.6); pointer-events: none;"></div>
+                        <div id="rangeWindow" style="position: absolute; top: 0; bottom: 0; border: 2px solid var(--accent-cyan); border-radius: 4px; cursor: grab; background: transparent;">
+                            <div id="rangeHandleL" style="position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: var(--accent-cyan); border-radius: 4px 0 0 4px; opacity: 0.8;"></div>
+                            <div id="rangeHandleR" style="position: absolute; right: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: var(--accent-cyan); border-radius: 0 4px 4px 0; opacity: 0.8;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Trades Count -->
+            <div class="card" style="margin-bottom: 1rem; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div>
+                        <div class="card-title">Daily Trades Count</div>
+                        <div class="card-subtitle">Number of trades per deployer · <span style="color: var(--text-muted); font-style: italic;">excludes liquidations</span></div>
+                    </div>
+                </div>
+                <div class="chart-container medium"><canvas id="dailyTradesChart"></canvas></div>
+                <div id="tradesTooltip" style="display:none; position:absolute; pointer-events:none; z-index:100; background:rgba(14,21,28,0.96); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:0.875rem 1rem; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,0.5); min-width:200px;"></div>
+            </div>
+
+            <!-- Daily Fees -->
+            <div class="card" style="margin-bottom: 1rem; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div>
+                        <div class="card-title">Daily Fees</div>
+                        <div class="card-subtitle">Estimated fees per deployer (0.01% of volume) · <span style="color: var(--text-muted); font-style: italic;">excludes liquidations</span></div>
+                    </div>
+                </div>
+                <div class="chart-container medium"><canvas id="dailyFeesChart"></canvas></div>
+                <div id="feesTooltip" style="display:none; position:absolute; pointer-events:none; z-index:100; background:rgba(14,21,28,0.96); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:0.875rem 1rem; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,0.5); min-width:200px;"></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <div class="card-title">Market Share</div>
+                            <div class="card-subtitle">Distribution by DEX</div>
+                        </div>
+                        <div style="display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                            <button onclick="setMarketShareMode('volume')" id="msVolBtn" style="padding: 0.3rem 0.625rem; font-size: 0.6875rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: none; background: var(--accent-cyan); color: #080d12; transition: all 0.2s;">Volume</button>
+                            <button onclick="setMarketShareMode('trades')" id="msTradesBtn" style="padding: 0.3rem 0.625rem; font-size: 0.6875rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: none; background: var(--bg-tertiary); color: var(--text-muted); transition: all 0.2s;">Trades</button>
+                            <button onclick="setMarketShareMode('oi')" id="msOIBtn" style="padding: 0.3rem 0.625rem; font-size: 0.6875rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: none; background: var(--bg-tertiary); color: var(--text-muted); transition: all 0.2s;">OI</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="flex: 0 0 45%; position: relative; height: 220px;"><canvas id="overviewVolPie"></canvas></div>
+                        <div id="marketShareLegend" style="flex: 1; min-width: 0;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Top Markets by Volume</div>
+                    <div class="card-subtitle">Highest 24h volume tickers</div>
+                    <div class="chart-container"><canvas id="overviewTopVol"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Open Interest vs Volume</div>
+                    <div class="card-subtitle">Bubble size = Open Interest</div>
+                    <div class="chart-container"><canvas id="overviewBubble"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Deployer Performance</div>
+                    <div class="card-subtitle">Total volume and open interest per deployer</div>
+                    <div class="chart-container"><canvas id="overviewDeployerPerf"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Estimated 24H Fees by Deployer</div>
+                    <div class="card-subtitle">Fee revenue generated per builder (est. ~1 bps)</div>
+                    <div class="chart-container"><canvas id="overviewFeesByDeployer"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Estimated 24H Fees by Type</div>
+                    <div class="card-subtitle">Fee revenue by asset category</div>
+                    <div class="chart-container"><canvas id="overviewFeesByType"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Liquidity Efficiency</div>
+                    <div class="card-subtitle">Volume / Spread - Higher is better</div>
+                    <div class="chart-container"><canvas id="overviewLiquidity"></canvas></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Price Deviation</div>
+                    <div class="card-subtitle">Premium vs external price</div>
+                    <div class="chart-container"><canvas id="overviewDeviation"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MARKETS ===== -->
+        <div class="view" id="markets">
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <span class="filter-label">Deployer:</span>
+                    <button class="filter-btn active" data-filter-type="deployer" data-value="all">All</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="xyz">xyz</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="vntl">vntl</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="km">km</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="cash">cash</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="flx">flx</button>
+                    <button class="filter-btn" data-filter-type="deployer" data-value="hyna">hyna</button>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Type:</span>
+                    <button class="filter-btn active" data-filter-type="category" data-value="all">All</button>
+                    <button class="filter-btn" data-filter-type="category" data-value="stock">Stocks</button>
+                    <button class="filter-btn" data-filter-type="category" data-value="commodity">Commodities</button>
+                    <button class="filter-btn" data-filter-type="category" data-value="crypto">Crypto</button>
+                    <button class="filter-btn" data-filter-type="category" data-value="index">Indices</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search ticker (e.g., TSLA, BTC, GOLD)...">
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="overflow-x: auto;">
+                    <table id="marketsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="ticker">Ticker</th>
+                                <th class="sortable" data-sort="deployer">Deployer</th>
+                                <th class="sortable" data-sort="category">Type</th>
+                                <th class="sortable right" data-sort="markPrice">Price</th>
+                                <th class="sortable right" data-sort="volume24h">24H Volume</th>
+                                <th class="sortable right" data-sort="openInterest">Open Interest</th>
+                                <th class="sortable right" data-sort="funding">Funding</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="loading"><span class="spinner"></span> Loading markets...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== COMPARE ===== -->
+        <div class="view" id="compare">
+            <div class="compare-header">
+                <div class="compare-header-left">
+                    <h2>Compare Deployers</h2>
+                    <p>Same market, different builders — OI, Volume, Spread & Funding</p>
+                </div>
+                <select id="assetSelector" class="compare-select">
+                    <option value="">Select asset...</option>
+                </select>
+            </div>
+            
+            <div id="deployerCardsContainer" class="deployer-cards" style="display: none;"></div>
+            
+            <div id="comparisonCard">
+                <div class="empty-state">
+                    <img src="images/sherlock.png" alt="Investigating..." />
+                    <h3>Select an asset to investigate</h3>
+                    <p>Choose a ticker above to compare how different deployers handle the same market</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== FUNDING RATE HEATMAP ===== -->
+        <div class="view" id="fundingrate">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <img src="images/crystalball.png" alt="" style="width: 48px; height: 48px; object-fit: contain;" />
+                    <div>
+                        <h2 style="font-size: 1.375rem; margin-bottom: 0.25rem;">Funding Rate Heatmap</h2>
+                        <p style="color: var(--text-muted); font-size: 0.8125rem;">Historical funding rates across HIP-3 markets (APR)</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <select id="fundingPeriod" class="compare-select" style="min-width: 120px;">
+                        <option value="30">30 Days</option>
+                        <option value="7" selected>7 Days</option>
+                        <option value="2">2 Days</option>
+                        <option value="1">1 Day</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Controls: combined contrast + color legend -->
+            <div class="card" style="padding: 0.75rem 1.5rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.6875rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; white-space: nowrap;" id="legendMin">-150% APR</span>
+                    <div style="flex: 1; min-width: 200px; position: relative; height: 18px;">
+                        <div style="position: absolute; inset: 0; border-radius: 9px; background: linear-gradient(90deg, #7c3aed, #3b82f6, #06b6d4, #0d9488, #10b981, #84cc16, #eab308, #f97316, #ef4444); opacity: 0.85;"></div>
+                        <input type="range" id="contrastSlider" min="5" max="300" value="150" style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;" />
+                        <div id="contrastThumb" style="position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #0e151c; transform: translate(-50%, -50%); pointer-events: none; z-index: 3; left: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.5);"></div>
+                    </div>
+                    <span style="font-size: 0.6875rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; white-space: nowrap;" id="legendMax">+150% APR</span>
+                </div>
+            </div>
+
+            <!-- Heatmap -->
+            <div class="card" style="padding: 1rem;">
+                <div id="heatmapLoading" style="text-align: center; padding: 4rem;">
+                    <div class="empty-state">
+                        <img src="images/sweating.png" alt="" style="width: 100px; height: 100px;" />
+                        <h3>Loading funding data...</h3>
+                        <p id="heatmapProgress">Fetching rates for 0/30 markets...</p>
+                    </div>
+                </div>
+                <div id="heatmapWrapper" style="overflow-x: auto; position: relative; display: none;">
+                    <canvas id="fundingHeatmap" style="cursor: crosshair;"></canvas>
+                </div>
+                <div id="heatmapTooltip" style="display: none; position: fixed; background: rgba(14,21,28,0.95); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; pointer-events: none; z-index: 200; backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-width: 220px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== RISK SCORE ===== -->
+        <div class="view" id="riskscore">
+            <div class="risk-header">
+                <div>
+                    <h2 style="font-size: 1.375rem; margin-bottom: 0.25rem;">HIP-3 Risk Score</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8125rem;">Market reliability analysis per builder and asset</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <button id="riskBackBtn" onclick="showRiskOverview()" style="display:none; padding: 0.5rem 0.875rem; font-size: 0.8125rem; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); border-radius: 8px; transition: all 0.2s;">← All Markets</button>
+                    <select id="riskAssetSelector" class="risk-select">
+                        <option value="">Select a market...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="riskContent">
+                <div id="riskOverview" style="padding: 0;">
+                    <div style="text-align: center; padding: 3rem;"><span class="spinner"></span><p style="color: var(--text-muted); margin-top: 0.75rem;">Computing risk scores...</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== LIQUIDATION ===== -->
+        <div class="view" id="liquidation">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <img src="images/teacher_angry.png" alt="💀" style="width: 48px; height: 48px; object-fit: contain;" onerror="this.style.display='none'" />
+                    <div>
+                        <h2 style="font-size: 1.375rem; margin-bottom: 0.25rem;">Liquidation Dashboard</h2>
+                        <p style="color: var(--text-muted); font-size: 0.8125rem;">Real-time liquidation tracking across HIP-3 markets</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div id="wsStatus" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; border-radius: 20px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);">
+                        <div id="wsDot" style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite;"></div>
+                        <span id="wsLabel" style="font-size: 0.75rem; color: #10b981; font-weight: 600;">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats cards: 1h, 4h, 12h, 24h -->
+            <div class="overview-stats">
+                <div class="stat-card">
+                    <div class="stat-label">1H Liquidations</div>
+                    <div class="stat-value" id="liq1h">$0</div>
+                    <div class="stat-sub" id="liq1hCount">0 events</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">4H Liquidations</div>
+                    <div class="stat-value" id="liq4h">$0</div>
+                    <div class="stat-sub" id="liq4hCount">0 events</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">12H Liquidations</div>
+                    <div class="stat-value" id="liq12h">$0</div>
+                    <div class="stat-sub" id="liq12hCount">0 events</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">24H Liquidations</div>
+                    <div class="stat-value" id="liq24h">$0</div>
+                    <div class="stat-sub" id="liq24hCount">0 events</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <!-- Daily Chart -->
+                <div class="card">
+                    <div class="card-title">Daily Liquidations by Deployer</div>
+                    <div class="card-subtitle">Accumulated from real-time feed (USD)</div>
+                    <div class="chart-container" style="height: 300px;"><canvas id="liqDailyChart"></canvas></div>
+                </div>
+
+                <!-- Hourly Chart -->
+                <div class="card">
+                    <div class="card-title">Liquidations Last 24H (Hourly)</div>
+                    <div class="card-subtitle">Volume per hour by deployer</div>
+                    <div class="chart-container" style="height: 300px;"><canvas id="liqHourlyChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Top Assets + Live Feed -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Top Assets Table -->
+                <div class="card">
+                    <div class="card-title">Top Liquidated Assets</div>
+                    <div class="card-subtitle">Ranked by liquidation volume</div>
+                    <div style="overflow-x: auto; margin-top: 1rem;">
+                        <table class="market-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Asset</th>
+                                    <th style="text-align: left;">Deployer</th>
+                                    <th style="text-align: right;">Volume</th>
+                                    <th style="text-align: right;">Count</th>
+                                    <th style="text-align: right;">Avg Size</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liqTopAssets">
+                                <tr><td colspan="5"><div class="empty-state" style="padding: 2rem;"><img src="images/sweating.png" alt="" style="width: 60px; height: 60px;" /><p style="margin-top: 0.5rem;">Waiting for liquidation data...</p></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Live Feed -->
+                <div class="card">
+                    <div class="card-title">Live Liquidation Feed</div>
+                    <div class="card-subtitle">Real-time events from Hyperliquid</div>
+                    <div id="liqFeed" style="margin-top: 1rem; max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <img src="images/sweating.png" alt="" style="width: 60px; height: 60px;" />
+                            <p style="margin-top: 0.5rem;">Waiting for liquidations...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TRACKER ===== -->
+        <div class="view" id="airdrop">
+            <div class="tracker-hero">
+                <img src="images/notes.png" alt="Tracker" class="tracker-hero-img" />
+                <div>
+                    <h2 style="font-size: 1.375rem; margin-bottom: 0.375rem;">HIP-3 Tracker</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; max-width: 600px;">
+                        Position yourself for potential builder airdrops by trading HIP-3 markets. Track your activity and leaderboard position.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Claim Section -->
+            <div class="claim-card">
+                <h3 style="font-size: 1.0625rem; margin-bottom: 0.75rem; font-weight: 600;">Claim Your Spot</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
+                    Enter your address to claim your position on the leaderboard
+                </p>
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+                    <input 
+                        type="text" 
+                        id="airdropAddress"
+                        placeholder="0x..."
+                        style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; transition: border-color 0.2s;"
+                        onfocus="this.style.borderColor='var(--accent-cyan)'"
+                        onblur="this.style.borderColor='var(--border)'"
+                    />
+                    <button 
+                        id="claimBtn"
+                        style="padding: 0.75rem 2rem; background: var(--accent-cyan); border: none; border-radius: 8px; color: #080d12; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'Outfit', sans-serif; font-size: 0.875rem; transition: box-shadow 0.2s;"
+                        onmouseover="this.style.boxShadow='0 0 16px rgba(0,229,204,0.4)'"
+                        onmouseout="this.style.boxShadow='none'"
+                    >
+                        Scan Trades
+                    </button>
+                </div>
+                <div id="claimStatus"></div>
+            </div>
+
+            <!-- User Stats -->
+            <div id="userStats" style="display: none; margin-bottom: 1.5rem;"></div>
+
+            <!-- Leaderboard -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <img src="images/samurai.png" alt="" style="width: 32px; height: 32px; object-fit: contain;" />
+                        <h3 style="font-size: 1.0625rem; font-weight: 600;">Top HIP-3 Traders</h3>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Sort:</span>
+                        <select id="leaderboardSort" onchange="loadLeaderboard()" style="padding: 0.5rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 0.8125rem; cursor: pointer; font-family: 'Outfit', sans-serif;">
+                            <option value="total_volume">Volume</option>
+                            <option value="total_pnl">PnL</option>
+                            <option value="total_fees">Fees</option>
+                            <option value="trades_count">Trades</option>
+                            <option value="pairs_traded">Pairs</option>
+                        </select>
+                        <span style="font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Show:</span>
+                        <select id="leaderboardPageSize" onchange="loadLeaderboard()" style="padding: 0.5rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 0.8125rem; cursor: pointer; font-family: 'Outfit', sans-serif;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <button 
+                            onclick="loadLeaderboard()"
+                            style="padding: 0.5rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); cursor: pointer; font-size: 0.8125rem;"
+                            title="Refresh"
+                        >↻</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="leaderboardTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Trader</th>
+                                <th class="right">PnL</th>
+                                <th class="right">Volume</th>
+                                <th class="right">Fees</th>
+                                <th class="right">Trades</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" style="text-align: center; padding: 3rem;"><span class="spinner"></span> Loading leaderboard...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="leaderboardPagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.25rem; flex-wrap: wrap;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="footer-inner">
+            <img src="images/meditation.png" alt="" class="footer-mascot" />
+            <div class="footer-text">
+                Built for the Hyperliquid community · <a href="https://hyperliquid.xyz" target="_blank">hyperliquid.xyz</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        let allMarkets = [];
+        let currentFilters = { deployer: 'all', category: 'all', search: '' };
+        let currentSort = { field: 'volume24h', direction: 'desc' };
+        let currentLeaderboardPage = 1;
+
+        const DEPLOYER_COLORS = {
+            xyz: '#00e5cc',
+            vntl: '#8b5cf6',
+            km: '#f59e0b',
+            cash: '#10b981',
+            flx: '#3b82f6',
+            hyna: '#ec4899'
+        };
+
+        const STOCKS = ['TSLA', 'AAPL', 'GOOGL', 'MSFT', 'NVDA', 'META', 'AMZN', 'NFLX', 'AMD', 'INTC', 'COIN', 'HOOD', 'PLTR', 'MSTR', 'SNOW', 'SHOP'];
+        const COMMODITIES = ['GOLD', 'SILVER', 'OIL', 'COPPER'];
+        const INDICES = ['SPX', 'NDX', 'US500', 'USA500', 'XYZ100'];
+        const CRYPTO = ['BTC', 'ETH', 'SOL', 'HYPE'];
+
+        function categorizeAsset(name) {
+            const ticker = name.split(':')[1] || name;
+            if (STOCKS.some(s => ticker.includes(s))) return 'stock';
+            if (COMMODITIES.some(c => ticker.includes(c))) return 'commodity';
+            if (INDICES.some(i => ticker.includes(i))) return 'index';
+            if (CRYPTO.some(c => ticker.includes(c))) return 'crypto';
+            return 'stock';
+        }
+
+        // Load markets
+        async function loadMarkets(silent = false) {
+            try {
+                if (!silent) {
+                    const tbody = document.querySelector('#marketsTable tbody');
+                    tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Loading markets...</td></tr>';
+                }
+                
+                const indicator = document.getElementById('refreshIndicator');
+                if (indicator && silent) indicator.style.opacity = '0.4';
+
+                const response = await fetch(`${API_BASE_URL}/.netlify/functions/api/global-stats`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    allMarkets = (result.data.allMarkets || result.data.topMarkets).map(m => ({
+                        ...m,
+                        ticker: m.name.split(':')[1] || m.name,
+                        deployer: m.dex || m.name.split(':')[0],
+                        category: categorizeAsset(m.name)
+                    }));
+                    
+                    renderMarkets();
+                    if (!silent) {
+                        populateAssetSelector();
+                        populateRiskSelector();
+                        createOverviewCharts();
+                    }
+                    console.log('Loaded', allMarkets.length, 'markets' + (silent ? ' (refresh)' : ''));
+                }
+                
+                if (indicator) indicator.style.opacity = '1';
+            } catch (error) {
+                console.error('Error:', error);
+                const indicator = document.getElementById('refreshIndicator');
+                if (indicator) indicator.style.opacity = '1';
+            }
+        }
+        
+        function populateAssetSelector() {
+            const tickerCounts = {};
+            allMarkets.forEach(m => { tickerCounts[m.ticker] = (tickerCounts[m.ticker] || 0) + 1; });
+            const uniqueTickers = [...new Set(allMarkets.map(m => m.ticker))].sort();
+            
+            const selector = document.getElementById('assetSelector');
+            if (selector) {
+                selector.innerHTML = '<option value="">Select asset...</option>' + 
+                    uniqueTickers.map(ticker => {
+                        const count = tickerCounts[ticker];
+                        return `<option value="${ticker}">${ticker}${count > 1 ? ' (' + count + ' deployers)' : ''}</option>`;
+                    }).join('');
+                
+                selector.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        showComparison(e.target.value);
+                    } else {
+                        document.getElementById('deployerCardsContainer').style.display = 'none';
+                        document.getElementById('comparisonCard').innerHTML = `
+                            <div class="empty-state">
+                                <img src="images/sherlock.png" alt="Investigating..." />
+                                <h3>Select an asset to investigate</h3>
+                                <p>Choose a ticker above to compare how different deployers handle the same market</p>
+                            </div>`;
+                    }
+                });
+            }
+        }
+
+        function renderMarkets() {
+            let filtered = [...allMarkets];
+            if (currentFilters.deployer !== 'all') filtered = filtered.filter(m => m.deployer === currentFilters.deployer);
+            if (currentFilters.category !== 'all') filtered = filtered.filter(m => m.category === currentFilters.category);
+            if (currentFilters.search) {
+                const search = currentFilters.search.toLowerCase();
+                filtered = filtered.filter(m => m.ticker.toLowerCase().includes(search));
+            }
+
+            const { field, direction } = currentSort;
+            filtered.sort((a, b) => {
+                let valA = a[field], valB = b[field];
+                if (typeof valA === 'string') { valA = valA.toLowerCase(); valB = valB.toLowerCase(); return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA); }
+                return direction === 'asc' ? valA - valB : valB - valA;
+            });
+
+            document.querySelectorAll('#marketsTable th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === field) th.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+            });
+            
+            const tbody = document.querySelector('#marketsTable tbody');
+            tbody.innerHTML = filtered.map(m => `
+                <tr onclick="navigateToCompare('${m.ticker}')" style="cursor: pointer;">
+                    <td style="font-weight: 600;">${m.ticker}</td>
+                    <td><span class="badge ${m.deployer}">${m.deployer}</span></td>
+                    <td><span class="badge ${m.category}">${m.category}</span></td>
+                    <td class="number-cell">$${m.markPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="number-cell">$${(m.volume24h / 1000000).toFixed(2)}M</td>
+                    <td class="number-cell">$${(m.openInterest / 1000000).toFixed(2)}M</td>
+                    <td class="number-cell ${m.funding > 0 ? 'positive' : 'negative'}">${(m.funding * 100).toFixed(4)}%</td>
+                </tr>
+            `).join('') || `<tr><td colspan="7"><div class="empty-state"><img src="images/sweating.png" alt="" style="width:80px;height:80px;" /><h3>No markets found</h3><p>Try changing your filters</p></div></td></tr>`;
+        }
+
+        function showComparison(ticker) {
+            const matches = allMarkets.filter(m => m.ticker === ticker);
+            const cardsContainer = document.getElementById('deployerCardsContainer');
+            const card = document.getElementById('comparisonCard');
+            
+            if (matches.length === 0) {
+                cardsContainer.style.display = 'none';
+                card.innerHTML = `<div class="empty-state"><img src="images/sweating.png" alt="" style="width:80px;height:80px;" /><h3>No deployers found</h3><p>No data available for this asset</p></div>`;
+                return;
+            }
+            
+            const sorted = [...matches].sort((a, b) => b.openInterest - a.openInterest);
+            
+            cardsContainer.style.display = 'grid';
+            cardsContainer.innerHTML = sorted.map(m => {
+                const color = DEPLOYER_COLORS[m.deployer] || '#6b7280';
+                return `<div class="deployer-card" style="border-left: 3px solid ${color};"><div class="dep-name">${m.deployer.toUpperCase()}</div><div class="dep-value">$${formatCompact(m.openInterest)}</div><div class="dep-ticker">${ticker}</div></div>`;
+            }).join('');
+
+            card.innerHTML = `
+                <div class="compare-table-wrapper">
+                    <div class="compare-table-title">Detailed Comparison</div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>Deployer</th><th>Symbol</th><th class="right">Open Interest</th><th class="right">Volume</th><th class="right">Price</th><th class="right">Funding</th><th class="right">Premium</th></tr></thead>
+                            <tbody>
+                                ${sorted.map(m => {
+                                    const color = DEPLOYER_COLORS[m.deployer] || '#6b7280';
+                                    return `<tr><td style="font-weight:500;"><span class="deployer-dot" style="background:${color};"></span>${m.deployer.toUpperCase()}</td><td style="color:var(--text-secondary);">${ticker}</td><td class="number-cell">$${formatCompact(m.openInterest)}</td><td class="number-cell">$${formatCompact(m.volume24h)}</td><td class="number-cell">$${m.markPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="number-cell ${m.funding>0?'positive':'negative'}">${(m.funding*100).toFixed(4)}%</td><td class="number-cell">${(m.premium*100).toFixed(4)}%</td></tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        function formatCompact(value) {
+            if (value >= 1e9) return (value / 1e9).toFixed(2) + 'B';
+            if (value >= 1e6) return (value / 1e6).toFixed(2) + 'M';
+            if (value >= 1e3) return (value / 1e3).toFixed(2) + 'K';
+            return value.toFixed(2);
+        }
+
+        function navigateToCompare(ticker) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-view="compare"]').classList.add('active');
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('compare').classList.add('active');
+            document.getElementById('assetSelector').value = ticker;
+            showComparison(ticker);
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById(view).classList.add('active');
+            });
+        });
+
+        // Filters
+        document.querySelectorAll('[data-filter-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.filterType;
+                document.querySelectorAll(`[data-filter-type="${type}"]`).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilters[type] = btn.dataset.value;
+                renderMarkets();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', (e) => { currentFilters.search = e.target.value; renderMarkets(); });
+
+        document.querySelectorAll('#marketsTable th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.dataset.sort;
+                if (currentSort.field === field) { currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc'; }
+                else { currentSort.field = field; currentSort.direction = (field === 'ticker' || field === 'deployer' || field === 'category') ? 'asc' : 'desc'; }
+                renderMarkets();
+            });
+        });
+
+        loadMarkets();
+        loadLeaderboard();
+        setInterval(() => { loadMarkets(true); }, 10000);
+
+        // ===== OVERVIEW CHARTS =====
+        let overviewCharts = {};
+        
+        function createOverviewCharts() {
+            if (allMarkets.length === 0) return;
+            Object.values(overviewCharts).forEach(c => c.destroy && c.destroy());
+            overviewCharts = {};
+
+            const FEE_RATE = 0.0001;
+            const totalVol = allMarkets.reduce((s, m) => s + m.volume24h, 0);
+            const totalOI = allMarkets.reduce((s, m) => s + m.openInterest, 0);
+            const totalFees = totalVol * FEE_RATE;
+            const deployers = [...new Set(allMarkets.map(m => m.deployer))];
+
+            document.getElementById('statMarkets').textContent = allMarkets.length;
+            document.getElementById('statDeployers').textContent = deployers.length + ' deployers';
+            document.getElementById('statVolume').textContent = '$' + formatCompact(totalVol);
+            document.getElementById('statOI').textContent = '$' + formatCompact(totalOI);
+            document.getElementById('statFees').textContent = '$' + formatCompact(totalFees);
+
+            const chartTheme = { gridColor: '#1c2736', tickColor: '#5a6a7e', bgColor: '#080d12' };
+
+            // 2. Market Share (Volume / Trades / Traders / OI)
+            renderMarketShare();
+
+            // 3. Top Markets by Volume
+            const topVol = [...allMarkets].sort((a, b) => b.volume24h - a.volume24h).slice(0, 12);
+            const topVolCanvas = document.getElementById('overviewTopVol');
+            if (topVolCanvas) {
+                overviewCharts.topVol = new Chart(topVolCanvas.getContext('2d'), {
+                    type: 'bar', data: { labels: topVol.map(m => m.ticker), datasets: [{ data: topVol.map(m => m.volume24h / 1e6), backgroundColor: topVol.map(m => DEPLOYER_COLORS[m.deployer] || '#6b7280'), borderRadius: 4 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#151d26', titleColor: '#edf2f7', bodyColor: '#94a3b8', borderColor: '#1c2736', borderWidth: 1, titleFont: { family: 'Outfit' }, bodyFont: { family: "'JetBrains Mono', monospace", size: 12 }, callbacks: { label: ctx => ' $' + ctx.raw.toFixed(2) + 'M' } } }, scales: { x: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor, font: { family: "'JetBrains Mono', monospace", size: 11 } }, title: { display: true, text: 'Volume ($M)', color: chartTheme.tickColor, font: { family: 'Outfit', size: 12 } } }, y: { grid: { display: false }, ticks: { color: chartTheme.tickColor, font: { family: 'Outfit', size: 11, weight: 600 } } } } }
+                });
+            }
+
+            // 4. OI vs Volume Bubble
+            const bubbleData = allMarkets.filter(m => m.volume24h > 0).map(m => ({ x: m.volume24h / 1e6, y: m.openInterest / 1e6, r: Math.max(Math.sqrt(m.openInterest / 1e6) * 3, 3), label: m.ticker, deployer: m.deployer }));
+            const bubbleCanvas = document.getElementById('overviewBubble');
+            if (bubbleCanvas) {
+                overviewCharts.bubble = new Chart(bubbleCanvas.getContext('2d'), {
+                    type: 'bubble', data: { datasets: [{ data: bubbleData, backgroundColor: bubbleData.map(d => { const c = DEPLOYER_COLORS[d.deployer] || '#6b7280'; return c + '55'; }), borderColor: bubbleData.map(d => DEPLOYER_COLORS[d.deployer] || '#6b7280'), borderWidth: 1 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const d = ctx.raw; return d.label + ': Vol $' + d.x.toFixed(1) + 'M, OI $' + d.y.toFixed(1) + 'M'; } } } }, scales: { x: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor }, title: { display: true, text: 'Volume 24h ($M)', color: chartTheme.tickColor } }, y: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor }, title: { display: true, text: 'Open Interest ($M)', color: chartTheme.tickColor } } } }
+                });
+            }
+
+            // 5. Deployer Performance
+            const deployerStats = {};
+            allMarkets.forEach(m => { if (!deployerStats[m.deployer]) deployerStats[m.deployer] = { volume: 0, oi: 0, count: 0 }; deployerStats[m.deployer].volume += m.volume24h; deployerStats[m.deployer].oi += m.openInterest; deployerStats[m.deployer].count++; });
+            const dpNames = Object.keys(deployerStats);
+            const dpCanvas = document.getElementById('overviewDeployerPerf');
+            if (dpCanvas) {
+                overviewCharts.depPerf = new Chart(dpCanvas.getContext('2d'), {
+                    type: 'bar', data: { labels: dpNames.map(d => d.toUpperCase()), datasets: [ { label: 'Volume ($M)', data: dpNames.map(d => deployerStats[d].volume / 1e6), backgroundColor: dpNames.map(d => DEPLOYER_COLORS[d] || '#6b7280'), borderRadius: 4 }, { label: 'Open Interest ($M)', data: dpNames.map(d => deployerStats[d].oi / 1e6), backgroundColor: dpNames.map(d => { const c = DEPLOYER_COLORS[d] || '#6b7280'; return c + '55'; }), borderRadius: 4 } ] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTheme.tickColor } } }, scales: { x: { grid: { display: false }, ticks: { color: chartTheme.tickColor } }, y: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor }, title: { display: true, text: '$M', color: chartTheme.tickColor } } } }
+                });
+            }
+
+            // 6. Fees by Deployer
+            const feesByDeployer = {};
+            allMarkets.forEach(m => { feesByDeployer[m.deployer] = (feesByDeployer[m.deployer] || 0) + (m.volume24h * FEE_RATE); });
+            const feeDepNames = Object.keys(feesByDeployer);
+            const feeDepCanvas = document.getElementById('overviewFeesByDeployer');
+            if (feeDepCanvas) {
+                overviewCharts.feesDep = new Chart(feeDepCanvas.getContext('2d'), {
+                    type: 'bar', data: { labels: feeDepNames.map(d => d.toUpperCase()), datasets: [{ label: 'Est. Fees ($)', data: feeDepNames.map(d => feesByDeployer[d]), backgroundColor: feeDepNames.map(d => DEPLOYER_COLORS[d] || '#6b7280'), borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'Fees: $' + formatCompact(ctx.raw) } } }, scales: { x: { grid: { display: false }, ticks: { color: chartTheme.tickColor } }, y: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor, callback: v => '$' + formatCompact(v) }, title: { display: true, text: 'Est. 24H Fees', color: chartTheme.tickColor } } } }
+                });
+            }
+
+            // 7. Fees by Type
+            const feesByType = {};
+            const catLabels = { stock: 'Stocks', commodity: 'Commodities', crypto: 'Crypto', index: 'Indices' };
+            const catChartColors = { stock: '#3b82f6', commodity: '#f59e0b', crypto: '#8b5cf6', index: '#10b981' };
+            allMarkets.forEach(m => { feesByType[m.category] = (feesByType[m.category] || 0) + (m.volume24h * FEE_RATE); });
+            const feeTypeNames = Object.keys(feesByType);
+            const feeTypeCanvas = document.getElementById('overviewFeesByType');
+            if (feeTypeCanvas) {
+                overviewCharts.feesType = new Chart(feeTypeCanvas.getContext('2d'), {
+                    type: 'doughnut', data: { labels: feeTypeNames.map(t => catLabels[t] || t), datasets: [{ data: feeTypeNames.map(t => feesByType[t]), backgroundColor: feeTypeNames.map(t => catChartColors[t] || '#6b7280'), borderColor: chartTheme.bgColor, borderWidth: 2, hoverOffset: 15, hoverBorderWidth: 3, hoverBorderColor: '#ffffff' }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: chartTheme.tickColor, padding: 12 } }, tooltip: { callbacks: { label: ctx => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0); return ctx.label + ': $' + formatCompact(ctx.raw) + ' (' + ((ctx.raw / total) * 100).toFixed(1) + '%)'; } } } } }
+                });
+            }
+
+            // 8. Liquidity Efficiency
+            const effData = allMarkets.map(m => ({ name: m.ticker, eff: m.volume24h / (Math.abs(m.premium * 100) + 0.01), deployer: m.deployer })).sort((a, b) => b.eff - a.eff).slice(0, 15);
+            const liqCanvas = document.getElementById('overviewLiquidity');
+            if (liqCanvas) {
+                overviewCharts.liquidity = new Chart(liqCanvas.getContext('2d'), {
+                    type: 'bar', data: { labels: effData.map(d => d.name), datasets: [{ data: effData.map(d => d.eff), backgroundColor: effData.map(d => DEPLOYER_COLORS[d.deployer] || '#10b981'), borderRadius: 4 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: chartTheme.gridColor }, ticks: { color: chartTheme.tickColor } }, y: { grid: { display: false }, ticks: { color: chartTheme.tickColor } } } }
+                });
+            }
+
+            // 9. Price Deviation
+            const devData = allMarkets.map(m => ({ name: m.ticker, premium: m.premium * 100, deployer: m.deployer })).sort((a, b) => Math.abs(b.premium) - Math.abs(a.premium)).slice(0, 20);
+            const devCanvas = document.getElementById('overviewDeviation');
+            if (devCanvas) {
+                overviewCharts.deviation = new Chart(devCanvas.getContext('2d'), {
+                    type: 'bar', data: { labels: devData.map(d => d.name), datasets: [{ data: devData.map(d => d.premium), backgroundColor: devData.map(d => d.premium > 0 ? '#ef4444' : '#3b82f6'), borderRadius: 4 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: chartTheme.gridColor }, title: { display: true, text: 'Premium (%)', color: chartTheme.tickColor }, ticks: { color: chartTheme.tickColor } }, y: { grid: { display: false }, ticks: { color: chartTheme.tickColor } } } }
+                });
+            }
+        }
+        // ===== RISK SCORE =====
+        let riskOverviewSortBy = 'healthScore';
+        let riskOverviewSortDir = 'desc';
+
+        function populateRiskSelector() {
+            const selector = document.getElementById('riskAssetSelector');
+            if (!selector || allMarkets.length === 0) return;
+            const sorted = [...allMarkets].sort((a, b) => b.volume24h - a.volume24h);
+            selector.innerHTML = '<option value="">Select a market...</option>' + sorted.map(m => `<option value="${m.name}">${m.ticker} (${m.deployer.toUpperCase()}) — $${formatCompact(m.volume24h)} vol</option>`).join('');
+            selector.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    renderRiskScore(e.target.value);
+                    document.getElementById('riskBackBtn').style.display = '';
+                } else {
+                    showRiskOverview();
+                }
+            });
+            renderRiskOverview();
+        }
+
+        function showRiskOverview() {
+            document.getElementById('riskBackBtn').style.display = 'none';
+            document.getElementById('riskAssetSelector').value = '';
+            renderRiskOverview();
+        }
+
+        function sortRiskOverview(field) {
+            if (riskOverviewSortBy === field) {
+                riskOverviewSortDir = riskOverviewSortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                riskOverviewSortBy = field;
+                riskOverviewSortDir = field === 'ticker' || field === 'deployer' ? 'asc' : 'desc';
+            }
+            renderRiskOverview();
+        }
+
+        function renderRiskOverview() {
+            if (!allMarkets || allMarkets.length === 0) {
+                document.getElementById('riskContent').innerHTML = '<div id="riskOverview"><div style="text-align:center;padding:3rem;"><span class="spinner"></span><p style="color:var(--text-muted);margin-top:0.75rem;">Loading markets...</p></div></div>';
+                return;
+            }
+
+            // Compute risk for all markets
+            let scored = allMarkets.map(m => {
+                const metrics = computeRiskMetrics(m);
+                return { ...m, metrics, healthScore: metrics.healthScore };
+            });
+
+            // Sort
+            const dir = riskOverviewSortDir === 'desc' ? -1 : 1;
+            scored.sort((a, b) => {
+                if (riskOverviewSortBy === 'ticker') return dir * a.ticker.localeCompare(b.ticker);
+                if (riskOverviewSortBy === 'deployer') return dir * a.deployer.localeCompare(b.deployer);
+                if (riskOverviewSortBy === 'healthScore') return dir * (a.healthScore - b.healthScore);
+                if (riskOverviewSortBy === 'oracle') return dir * (a.metrics.oracle.score - b.metrics.oracle.score);
+                if (riskOverviewSortBy === 'liquidity') return dir * (a.metrics.liquidity.score - b.metrics.liquidity.score);
+                if (riskOverviewSortBy === 'volume') return dir * (a.volume24h - b.volume24h);
+                if (riskOverviewSortBy === 'oi') return dir * (a.openInterest - b.openInterest);
+                return 0;
+            });
+
+            const arrow = (field) => riskOverviewSortBy === field ? (riskOverviewSortDir === 'desc' ? ' ▾' : ' ▴') : '';
+            const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap;padding:0.75rem 0.625rem;font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);';
+            const thStyleR = thStyle + 'text-align:right;';
+
+            const scoreBar = (score, width) => {
+                const color = getScoreColor(score);
+                return `<div style="display:flex;align-items:center;gap:0.5rem;justify-content:flex-end;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;font-weight:600;color:${color};min-width:24px;text-align:right;">${score}</span>
+                    <div style="width:${width}px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;">
+                        <div style="width:${score}%;height:100%;background:${color};border-radius:3px;"></div>
+                    </div>
+                </div>`;
+            };
+
+            const gradeTag = (score) => {
+                const g = getScoreGrade(score);
+                return `<span style="display:inline-flex;align-items:center;gap:0.375rem;padding:0.25rem 0.625rem;border-radius:20px;background:${g.bg};color:${g.color};font-size:0.75rem;font-weight:600;white-space:nowrap;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:${g.color};"></span>${g.label}
+                </span>`;
+            };
+
+            const rows = scored.map(m => {
+                const logo = DEPLOYER_LOGOS[m.deployer] || '';
+                const depName = DEPLOYER_NAMES[m.deployer] || m.deployer.toUpperCase();
+                const logoHtml = logo ? `<div style="width:22px;height:22px;min-width:22px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#1a2332;display:flex;align-items:center;justify-content:center;padding:3px;"><img src="${logo}" style="max-width:100%;max-height:100%;object-fit:contain;display:block;" onerror="this.parentElement.style.display='none'"></div>` : `<span style="width:22px;height:22px;min-width:22px;border-radius:50%;background:${DEPLOYER_COLORS[m.deployer] || '#6b7280'};display:inline-block;flex-shrink:0;"></span>`;
+
+                return `<tr style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background=''" onclick="document.getElementById('riskAssetSelector').value='${m.name}';document.getElementById('riskAssetSelector').dispatchEvent(new Event('change'));">
+                    <td style="padding:0.625rem;white-space:nowrap;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            ${logoHtml}
+                            <div>
+                                <div style="font-weight:600;font-size:0.8125rem;color:var(--text-primary);">${m.ticker}</div>
+                                <div style="font-size:0.6875rem;color:var(--text-muted);">${depName}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding:0.625rem;text-align:center;">${gradeTag(m.healthScore)}</td>
+                    <td style="padding:0.625rem;text-align:right;">${scoreBar(m.healthScore, 48)}</td>
+                    <td style="padding:0.625rem;text-align:right;">${scoreBar(m.metrics.oracle.score, 36)}</td>
+                    <td style="padding:0.625rem;text-align:right;">${scoreBar(m.metrics.liquidity.score, 36)}</td>
+                    <td style="padding:0.625rem;text-align:right;font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--text-secondary);">$${formatCompact(m.volume24h)}</td>
+                    <td style="padding:0.625rem;text-align:right;font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--text-secondary);">$${formatCompact(m.openInterest)}</td>
+                    <td style="padding:0.625rem;text-align:center;font-size:0.75rem;color:var(--text-muted);">→</td>
+                </tr>`;
+            }).join('');
+
+            // Summary cards
+            const excellent = scored.filter(m => m.healthScore >= 75).length;
+            const fair = scored.filter(m => m.healthScore >= 50 && m.healthScore < 75).length;
+            const risky = scored.filter(m => m.healthScore < 50).length;
+            const avgScore = scored.length > 0 ? Math.round(scored.reduce((s, m) => s + m.healthScore, 0) / scored.length) : 0;
+
+            document.getElementById('riskContent').innerHTML = `
+                <div id="riskOverview">
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1.25rem;">
+                        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:1rem;">
+                            <div style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.375rem;">Markets Analyzed</div>
+                            <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text-primary);">${scored.length}</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:1rem;">
+                            <div style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:0.375rem;">Avg Score</div>
+                            <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${getScoreColor(avgScore)};">${avgScore}</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:1rem;">
+                            <div style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:#10b981;margin-bottom:0.375rem;">Good / Excellent</div>
+                            <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10b981;">${excellent}</div>
+                        </div>
+                        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:1rem;">
+                            <div style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.05em;color:#ef4444;margin-bottom:0.375rem;">Risky / Dangerous</div>
+                            <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#ef4444;">${risky}</div>
+                        </div>
+                    </div>
+                    <div class="card" style="padding:0;overflow:hidden;">
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg-tertiary);">
+                                        <th onclick="sortRiskOverview('ticker')" style="${thStyle}">Market${arrow('ticker')}</th>
+                                        <th onclick="sortRiskOverview('healthScore')" style="${thStyle}text-align:center;">Grade${arrow('healthScore')}</th>
+                                        <th onclick="sortRiskOverview('healthScore')" style="${thStyleR}">Score${arrow('healthScore')}</th>
+                                        <th onclick="sortRiskOverview('oracle')" style="${thStyleR}">Oracle${arrow('oracle')}</th>
+                                        <th onclick="sortRiskOverview('liquidity')" style="${thStyleR}">Liquidity${arrow('liquidity')}</th>
+                                        <th onclick="sortRiskOverview('volume')" style="${thStyleR}">Volume 24h${arrow('volume')}</th>
+                                        <th onclick="sortRiskOverview('oi')" style="${thStyleR}">Open Interest${arrow('oi')}</th>
+                                        <th style="${thStyle}text-align:center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="margin-top:0.75rem;padding:0.625rem 1rem;font-size:0.75rem;color:var(--text-muted);text-align:center;">Click any row to view detailed risk analysis · Scores update in real-time with market data</div>
+                </div>`;
+        }
+
+        function computeRiskMetrics(market) {
+            const FEE_RATE = 0.0001; const m = market;
+            const oracleDrift = Math.abs(m.premium * 100);
+            const oracleScore = oracleDrift < 0.1 ? 100 : oracleDrift < 0.25 ? 80 : oracleDrift < 0.5 ? 55 : oracleDrift < 1 ? 30 : 10;
+            const oracleStatus = oracleDrift < 0.25 ? 'good' : oracleDrift < 0.5 ? 'warning' : 'danger';
+            const oracleAlert = oracleDrift > 0.5 ? 'Arbitrage Risk / High Latency' : null;
+            const hourlyVol = m.volume24h / 24; const depth1pct = hourlyVol * 0.1;
+            const liqScore = depth1pct > 100000 ? 95 : depth1pct > 50000 ? 80 : depth1pct > 10000 ? 60 : depth1pct > 1000 ? 35 : 10;
+            const liqStatus = liqScore >= 70 ? 'good' : liqScore >= 40 ? 'warning' : 'danger';
+            const slippage10k = depth1pct > 0 ? Math.min((10000 / depth1pct) * 0.5, 50) : 50;
+            const estimatedCap = m.openInterest * 2.5; const oiUtilization = estimatedCap > 0 ? (m.openInterest / estimatedCap) * 100 : 50;
+            const solvScore = oiUtilization < 30 ? 95 : oiUtilization < 50 ? 75 : oiUtilization < 70 ? 50 : oiUtilization < 85 ? 30 : 10;
+            const solvStatus = solvScore >= 70 ? 'good' : solvScore >= 40 ? 'warning' : 'danger';
+            const deployerMarkets = allMarkets.filter(x => x.deployer === m.deployer);
+            const deployerTotalOI = deployerMarkets.reduce((s, x) => s + x.openInterest, 0);
+            const deployerTotalVol = deployerMarkets.reduce((s, x) => s + x.volume24h, 0);
+            const hypeStakeEstimate = Math.sqrt(deployerTotalVol / 1e6) * 200000;
+            const skinRatio = deployerTotalOI > 0 ? (hypeStakeEstimate / deployerTotalOI) * 100 : 0;
+            const skinScore = skinRatio > 20 ? 90 : skinRatio > 10 ? 70 : skinRatio > 5 ? 50 : skinRatio > 2 ? 30 : 15;
+            const skinStatus = skinScore >= 70 ? 'good' : skinScore >= 40 ? 'warning' : 'danger';
+            const volScore = m.volume24h > 10e6 ? 95 : m.volume24h > 1e6 ? 80 : m.volume24h > 100000 ? 55 : m.volume24h > 10000 ? 30 : 10;
+            const healthScore = Math.round(oracleScore * 0.30 + liqScore * 0.25 + solvScore * 0.15 + skinScore * 0.15 + volScore * 0.15);
+            return { healthScore, oracle: { drift: oracleDrift, score: oracleScore, status: oracleStatus, alert: oracleAlert }, liquidity: { depth1pct, slippage10k, score: liqScore, status: liqStatus }, solvability: { utilization: oiUtilization, score: solvScore, status: solvStatus, oi: m.openInterest, cap: estimatedCap }, builder: { hypeStaked: hypeStakeEstimate, ratio: skinRatio, score: skinScore, status: skinStatus, totalOI: deployerTotalOI }, volume: { daily: m.volume24h, score: volScore }, fees: m.volume24h * FEE_RATE };
+        }
+
+        function getScoreColor(score) { if (score >= 75) return '#10b981'; if (score >= 50) return '#f59e0b'; return '#ef4444'; }
+        function getScoreGrade(score) {
+            if (score >= 90) return { label: 'Excellent', color: '#10b981', bg: 'rgba(16,185,129,0.15)' };
+            if (score >= 75) return { label: 'Good', color: '#10b981', bg: 'rgba(16,185,129,0.1)' };
+            if (score >= 55) return { label: 'Fair', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' };
+            if (score >= 35) return { label: 'Risky', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' };
+            return { label: 'Dangerous', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' };
+        }
+
+        function generateLiquidationWall(market) {
+            const price = market.markPrice; const oi = market.openInterest; const funding = market.funding;
+            const leverages = [2, 3, 5, 10, 20, 50]; const levels = [];
+            const longBias = funding > 0 ? 1.3 : 0.7;
+            leverages.forEach(lev => { const liqPrice = price * (1 - 1 / lev); const distPct = ((price - liqPrice) / price * 100); const pf = lev === 5 ? 2.5 : lev === 10 ? 2.0 : lev === 3 ? 1.5 : lev === 20 ? 1.2 : 0.5; levels.push({ price: liqPrice, amount: (oi * longBias * pf / leverages.length / lev), type: 'long', leverage: lev + 'x', distPct }); });
+            const shortBias = funding > 0 ? 0.7 : 1.3;
+            leverages.forEach(lev => { const liqPrice = price * (1 + 1 / lev); const distPct = ((liqPrice - price) / price * 100); const pf = lev === 5 ? 2.5 : lev === 10 ? 2.0 : lev === 3 ? 1.5 : lev === 20 ? 1.2 : 0.5; levels.push({ price: liqPrice, amount: (oi * shortBias * pf / leverages.length / lev), type: 'short', leverage: lev + 'x', distPct }); });
+            return levels.sort((a, b) => b.price - a.price);
+        }
+
+        function renderRiskScore(marketName) {
+            const market = allMarkets.find(m => m.name === marketName);
+            if (!market) return;
+            document.getElementById('riskBackBtn').style.display = '';
+            const metrics = computeRiskMetrics(market);
+            const grade = getScoreGrade(metrics.healthScore);
+            const scoreColor = getScoreColor(metrics.healthScore);
+            const circumference = 2 * Math.PI * 78;
+            const dashOffset = circumference * (1 - metrics.healthScore / 100);
+            const liqWall = generateLiquidationWall(market);
+            const maxAmount = Math.max(...liqWall.map(l => l.amount));
+            
+            document.getElementById('riskContent').innerHTML = `
+                <div class="risk-grid">
+                    <div class="score-ring-card">
+                        <div class="score-ring">
+                            <svg viewBox="0 0 180 180"><circle class="ring-bg" cx="90" cy="90" r="78"></circle><circle class="ring-fill" cx="90" cy="90" r="78" stroke="${scoreColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"></circle></svg>
+                            <div class="score-text"><div class="score-number" style="color:${scoreColor};">${metrics.healthScore}</div><div class="score-label">Health Score</div></div>
+                        </div>
+                        <div class="score-grade" style="color:${grade.color};background:${grade.bg};">${grade.label}</div>
+                        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;text-align:center;">${market.ticker} on ${market.deployer.toUpperCase()}</p>
+                    </div>
+                    <div class="risk-indicators">
+                        <div class="risk-indicator"><div class="ri-header"><span class="ri-title">Oracle Drift</span><span class="ri-badge ${metrics.oracle.status}">${metrics.oracle.status}</span></div><div class="ri-value" style="color:${getScoreColor(metrics.oracle.score)};">${metrics.oracle.drift.toFixed(3)}%</div><div class="ri-sub">Deviation from spot oracle price</div>${metrics.oracle.alert?`<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.1);border-radius:4px;font-size:0.75rem;color:#ef4444;font-weight:500;">${metrics.oracle.alert}</div>`:''}<div class="ri-bar-track"><div class="ri-bar-fill" style="width:${Math.min(metrics.oracle.drift*200,100)}%;background:${getScoreColor(metrics.oracle.score)};"></div></div></div>
+                        <div class="risk-indicator"><div class="ri-header"><span class="ri-title">Liquidity (1% Depth)</span><span class="ri-badge ${metrics.liquidity.status}">${metrics.liquidity.status}</span></div><div class="ri-value" style="color:${getScoreColor(metrics.liquidity.score)};">$${formatCompact(metrics.liquidity.depth1pct)}</div><div class="ri-sub">Price Impact for $10k: <strong style="color:var(--text-primary);">${metrics.liquidity.slippage10k.toFixed(2)}%</strong></div><div class="ri-bar-track"><div class="ri-bar-fill" style="width:${metrics.liquidity.score}%;background:${getScoreColor(metrics.liquidity.score)};"></div></div></div>
+                        <div class="risk-indicator"><div class="ri-header"><span class="ri-title">OI / Collateral</span><span class="ri-badge ${metrics.solvability.status}">${metrics.solvability.status}</span></div><div class="ri-value" style="color:${getScoreColor(metrics.solvability.score)};">${metrics.solvability.utilization.toFixed(1)}%</div><div class="ri-sub">$${formatCompact(metrics.solvability.oi)} OI / $${formatCompact(metrics.solvability.cap)} cap</div><div class="ri-bar-track"><div class="ri-bar-fill" style="width:${metrics.solvability.utilization}%;background:${getScoreColor(metrics.solvability.score)};"></div></div></div>
+                        <div class="risk-indicator"><div class="ri-header"><span class="ri-title">Builder Stake</span><span class="ri-badge ${metrics.builder.status}">${metrics.builder.status}</span></div><div class="ri-value" style="color:${getScoreColor(metrics.builder.score)};">~${formatCompact(metrics.builder.hypeStaked)} <span style="font-size:0.875rem;color:var(--text-muted);">$HYPE</span></div><div class="ri-sub">Stake / OI Ratio: <strong style="color:var(--text-primary);">${metrics.builder.ratio.toFixed(1)}%</strong></div><div class="ri-bar-track"><div class="ri-bar-fill" style="width:${Math.min(metrics.builder.ratio*4,100)}%;background:${getScoreColor(metrics.builder.score)};"></div></div></div>
+                    </div>
+                </div>
+                <div class="liq-wall-container">
+                    <div class="liq-wall-title">Liquidation Wall</div>
+                    <div class="liq-wall-sub">Estimated liquidation density by price level</div>
+                    <div style="display:flex;gap:1.5rem;margin-bottom:1rem;"><div style="display:flex;align-items:center;gap:0.375rem;font-size:0.75rem;color:var(--text-muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(16,185,129,0.7);"></span> Long Liquidations</div><div style="display:flex;align-items:center;gap:0.375rem;font-size:0.75rem;color:var(--text-muted);"><span style="width:10px;height:10px;border-radius:2px;background:rgba(239,68,68,0.7);"></span> Short Liquidations</div><div style="display:flex;align-items:center;gap:0.375rem;font-size:0.75rem;color:var(--text-muted);"><span style="width:10px;height:2px;background:var(--accent-cyan);"></span> Current Price</div></div>
+                    <div class="liq-wall-chart">
+                        ${liqWall.map((level, i) => {
+                            const barWidth = maxAmount > 0 ? (level.amount / maxAmount * 100) : 0;
+                            const isCurrentZone = i > 0 && liqWall[i-1].price > market.markPrice && level.price <= market.markPrice;
+                            let html = '';
+                            if (isCurrentZone) html += `<div class="liq-current-marker"><span class="liq-current-label">$${market.markPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} — Current</span></div>`;
+                            html += `<div class="liq-row"><span class="liq-price">$${level.price >= 1000 ? level.price.toFixed(0) : level.price.toFixed(2)}</span><div class="liq-bar-track"><div class="liq-bar ${level.type}" style="width:${barWidth.toFixed(1)}%;${level.type==='short'?'margin-left:auto;':''}"></div></div><span class="liq-amount">$${formatCompact(level.amount)}</span></div>`;
+                            return html;
+                        }).join('')}
+                    </div>
+                    <div style="margin-top:1rem;padding:0.75rem 1rem;background:var(--bg-tertiary);border-radius:8px;font-size:0.75rem;color:var(--text-muted);"><strong style="color:var(--text-secondary);">Note:</strong> Liquidation levels are estimated. Real data requires on-chain indexing.</div>
+                </div>
+                <div style="margin-top:1.5rem;background:var(--bg-secondary);border:1px solid var(--border);border-radius:14px;padding:1.5rem;">
+                    <div style="font-size:1rem;font-weight:600;margin-bottom:1rem;">Score Breakdown</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+                        ${[{label:'Oracle Drift',score:metrics.oracle.score,weight:'30%'},{label:'Liquidity',score:metrics.liquidity.score,weight:'25%'},{label:'Solvability',score:metrics.solvability.score,weight:'15%'},{label:'Builder Stake',score:metrics.builder.score,weight:'15%'},{label:'Volume/Activity',score:metrics.volume.score,weight:'15%'}].map(item => `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.625rem 0.75rem;background:var(--bg-tertiary);border-radius:8px;"><div><div style="font-size:0.8125rem;font-weight:500;">${item.label}</div><div style="font-size:0.6875rem;color:var(--text-muted);">Weight: ${item.weight}</div></div><div style="font-size:1.125rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${getScoreColor(item.score)};">${item.score}</div></div>`).join('')}
+                    </div>
+                </div>`;
+        }
+
+        // ===== LEADERBOARD =====
+        async function loadLeaderboard(page = 1) {
+            currentLeaderboardPage = page;
+            const tbody = document.querySelector('#leaderboardTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:3rem;"><span class="spinner"></span> Loading...</td></tr>';
+            try {
+                const sortBy = document.getElementById('leaderboardSort')?.value || 'total_volume';
+                const pageSize = document.getElementById('leaderboardPageSize')?.value || '50';
+                const response = await fetch(`${API_BASE_URL}/.netlify/functions/leaderboard?sortBy=${sortBy}&page=${page}&pageSize=${pageSize}`);
+                const result = await response.json();
+                if (result.success) { renderLeaderboard(result.data, result.pagination); renderPagination(result.pagination); }
+                else { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:3rem;color:var(--accent-red);">Error: ${result.message || 'Unknown'}</td></tr>`; }
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><img src="images/sweating.png" alt="" style="width:80px;height:80px;" /><h3>Failed to load leaderboard</h3><p>Check your connection and try again</p></div></td></tr>`;
+            }
+        }
+        
+        function renderPagination(pagination) {
+            const container = document.getElementById('leaderboardPagination');
+            if (!container || !pagination) return;
+            const { page, totalPages, hasPrev, hasNext, total } = pagination;
+            
+            let html = `<span style="color:#5a6a7e;font-size:0.8125rem;margin-right:0.75rem;">${total.toLocaleString()} traders · Page ${page}/${totalPages}</span>`;
+            
+            html += `<button onclick="loadLeaderboard(1)" ${page===1?'disabled':''}>«</button>`;
+            html += `<button onclick="loadLeaderboard(${page-1})" ${!hasPrev?'disabled':''}>‹</button>`;
+            
+            let pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (page > 3) pages.push('...');
+                const start = Math.max(2, page - 1);
+                const end = Math.min(totalPages - 1, page + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (page < totalPages - 2) pages.push('...');
+                pages.push(totalPages);
+            }
+            
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span style="color:#5a6a7e;padding:0 0.25rem;">…</span>`;
+                } else {
+                    html += `<button onclick="loadLeaderboard(${p})" class="${p===page?'pg-active':''}">${p}</button>`;
+                }
+            });
+            
+            html += `<button onclick="loadLeaderboard(${page+1})" ${!hasNext?'disabled':''}>›</button>`;
+            html += `<button onclick="loadLeaderboard(${totalPages})" ${page===totalPages?'disabled':''}>»</button>`;
+            
+            container.innerHTML = html;
+        }
+
+        function formatVolume(vol) { if (vol >= 1000000) return '$' + (vol / 1000000).toFixed(2) + 'M'; if (vol >= 1000) return '$' + (vol / 1000).toFixed(1) + 'K'; return '$' + vol.toFixed(0); }
+        function formatPnL(pnl) {
+            const color = pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; const sign = pnl >= 0 ? '+' : '';
+            let formatted; if (Math.abs(pnl) >= 1000000) formatted = (pnl / 1000000).toFixed(2) + 'M'; else if (Math.abs(pnl) >= 1000) formatted = (pnl / 1000).toFixed(1) + 'K'; else formatted = pnl.toFixed(2);
+            return `<span style="color:${color}">${sign}$${formatted}</span>`;
+        }
+        
+        function renderLeaderboard(traders, pagination = null) {
+            const tbody = document.querySelector('#leaderboardTable tbody');
+            if (traders.length === 0) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><img src="images/meditation.png" alt="" style="width:80px;height:80px;" /><h3>No traders found</h3><p>The leaderboard is empty for now</p></div></td></tr>`; return; }
+            const offset = pagination ? pagination.offset : 0;
+            tbody.innerHTML = traders.map((trader, index) => {
+                const rank = offset + index + 1;
+                const shortAddress = trader.address.substring(0, 6) + '...' + trader.address.substring(38);
+                const hypurrscanUrl = `https://hypurrscan.io/address/${trader.address}`;
+                const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : 'var(--text-secondary)';
+                return `<tr><td style="font-weight:700;color:${rankColor};font-size:${rank<=3?'1.125rem':'0.875rem'};">${rankDisplay}</td><td><a href="${hypurrscanUrl}" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--accent-cyan);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="View on Hypurrscan">${shortAddress}</a></td><td class="number-cell">${formatPnL(trader.total_pnl||0)}</td><td class="number-cell">${formatVolume(trader.total_volume||0)}</td><td class="number-cell" style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;">$${(trader.total_fees||0).toFixed(2)}</td><td class="number-cell" style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;">${trader.trades_count||0}</td></tr>`;
+            }).join('');
+        }
+        
+        // ===== CLAIM =====
+        document.getElementById('claimBtn').addEventListener('click', async () => {
+            const address = document.getElementById('airdropAddress').value.trim();
+            const statusDiv = document.getElementById('claimStatus');
+            const btn = document.getElementById('claimBtn');
+            
+            if (!address || !address.startsWith('0x') || address.length !== 42) {
+                statusDiv.innerHTML = '<p style="color:var(--accent-red);margin-top:0.5rem;">Invalid address format</p>';
+                return;
+            }
+            
+            btn.textContent = 'Loading...'; btn.disabled = true;
+            statusDiv.innerHTML = '<p style="color:var(--text-secondary);margin-top:0.5rem;"><span class="spinner"></span> Fetching your HIP-3 stats...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/.netlify/functions/leaderboard/claim`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    const pnlColor = (data.total_pnl || 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    const pnlSign = (data.total_pnl || 0) >= 0 ? '+' : '';
+                    const hypurrImg = (data.total_pnl || 0) >= 0 ? 'images/hearteyes.png' : 'images/sweating.png';
+                    
+                    const markets = data.markets || {};
+                    const marketList = Object.entries(markets).map(([name, stats]) => ({ name, volume: stats.volume || 0, pnl: stats.pnl || 0, trades: stats.trades || 0, fees: stats.fees || 0 }));
+                    const topVolume = [...marketList].sort((a, b) => b.volume - a.volume).slice(0, 3);
+                    const topGains = [...marketList].filter(m => m.pnl > 0).sort((a, b) => b.pnl - a.pnl).slice(0, 3);
+                    const topLosses = [...marketList].filter(m => m.pnl < 0).sort((a, b) => a.pnl - b.pnl).slice(0, 3);
+                    const favorite = [...marketList].sort((a, b) => b.trades - a.trades)[0];
+                    
+                    statusDiv.innerHTML = `<div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;margin-top:1rem;border:1px solid var(--accent-cyan);display:flex;align-items:center;gap:1rem;"><img src="${hypurrImg}" alt="" style="width:48px;height:48px;object-fit:contain;" /><div><p style="color:var(--accent-green);font-weight:600;margin-bottom:0.25rem;">Stats loaded!</p><p style="color:var(--text-secondary);font-size:0.8125rem;">Your position: <strong style="color:var(--text-primary);">#${data.rank}</strong> of ${data.total_traders} traders</p></div></div>`;
+                    
+                    const podiumHTML = (items, label, valueKey, formatFn, icon, emptyMsg) => {
+                        if (items.length === 0) return `<p style="color:var(--text-muted);font-size:0.8125rem;">${emptyMsg}</p>`;
+                        return items.map((m, i) => {
+                            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                            const value = formatFn(m[valueKey]);
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;${i<items.length-1?'border-bottom:1px solid var(--border);':''}"><span>${medal} <span style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;">${m.name}</span></span><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${valueKey==='pnl'?(m.pnl>=0?'var(--accent-green)':'var(--accent-red)'):'var(--text-primary)'};">${value}</span></div>`;
+                        }).join('');
+                    };
+                    const formatPnlVal = (v) => (v >= 0 ? '+' : '') + '$' + v.toFixed(2);
+                    
+                    document.getElementById('userStats').style.display = 'grid';
+                    document.getElementById('userStats').innerHTML = `
+                        <div class="card">
+                            <h3 style="font-size:1.0625rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;"><img src="${hypurrImg}" alt="" style="width:28px;height:28px;object-fit:contain;" /> Your Stats</h3>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.5rem;">
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">RANK</div><div style="font-size:1.375rem;font-weight:700;">#${data.rank}</div></div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">VOLUME</div><div style="font-size:1.375rem;font-weight:700;font-family:'JetBrains Mono',monospace;">${formatVolume(data.total_volume||0)}</div></div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">PNL</div><div style="font-size:1.375rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:${pnlColor};">${pnlSign}$${Math.abs(data.total_pnl||0).toFixed(2)}</div></div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">FEES</div><div style="font-size:1.375rem;font-weight:700;font-family:'JetBrains Mono',monospace;">$${(data.total_fees||0).toFixed(2)}</div></div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">TRADES</div><div style="font-size:1.375rem;font-weight:700;">${data.trades_count||0}</div></div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">PAIRS</div><div style="font-size:1.375rem;font-weight:700;">${data.pairs_traded||0}</div></div>
+                            </div>
+                            ${favorite ? `<div style="background:linear-gradient(135deg,var(--bg-tertiary) 0%,rgba(0,229,204,0.08) 100%);padding:1rem;border-radius:10px;margin-bottom:1.5rem;border:1px solid rgba(0,229,204,0.2);"><div style="font-size:0.6875rem;color:var(--text-muted);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.05em;">⭐ FAVORITE MARKET</div><div style="font-size:1.125rem;font-weight:700;font-family:'JetBrains Mono',monospace;">${favorite.name}</div><div style="font-size:0.8125rem;color:var(--text-secondary);margin-top:0.25rem;">${favorite.trades} trades · ${formatVolume(favorite.volume)} volume</div></div>` : ''}
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;">
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.8125rem;font-weight:600;margin-bottom:0.75rem;">🏆 Top Volume</div>${podiumHTML(topVolume,'Volume','volume',formatVolume,'📊','No trades yet')}</div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.8125rem;font-weight:600;margin-bottom:0.75rem;">📈 Best Gains</div>${podiumHTML(topGains,'PnL','pnl',formatPnlVal,'💰','No winning trades')}</div>
+                                <div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;"><div style="font-size:0.8125rem;font-weight:600;margin-bottom:0.75rem;">📉 Worst Losses</div>${podiumHTML(topLosses,'PnL','pnl',formatPnlVal,'💸','No losing trades')}</div>
+                            </div>
+                            ${data.pnl_history && data.pnl_history.length > 1 ? `<div style="background:var(--bg-tertiary);padding:1rem;border-radius:10px;margin-top:1.5rem;"><div style="font-size:0.8125rem;font-weight:600;margin-bottom:0.75rem;">📊 PnL Evolution</div><div style="height:200px;"><canvas id="pnlChart"></canvas></div></div>` : ''}
+                        </div>`;
+                    
+                    if (data.pnl_history && data.pnl_history.length > 1) {
+                        setTimeout(() => {
+                            const ctx = document.getElementById('pnlChart')?.getContext('2d');
+                            if (ctx) {
+                                new Chart(ctx, {
+                                    type: 'line', data: { labels: data.pnl_history.map(p => p.date), datasets: [{ label: 'Cumulative PnL', data: data.pnl_history.map(p => p.pnl), borderColor: data.total_pnl >= 0 ? '#10b981' : '#ef4444', backgroundColor: data.total_pnl >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 }] },
+                                    options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#151d26', titleColor: '#edf2f7', bodyColor: '#edf2f7', borderColor: '#1c2736', borderWidth: 1, callbacks: { label: (ctx) => { const val = ctx.parsed.y; return (val >= 0 ? '+' : '') + '$' + val.toFixed(2); } } } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a6a7e', maxTicksLimit: 6, font: { size: 10 } } }, y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a6a7e', callback: (v) => (v >= 0 ? '+' : '') + '$' + v.toFixed(0), font: { size: 10 } } } } }
+                                });
+                            }
+                        }, 100);
+                    }
+                    loadLeaderboard();
+                } else { statusDiv.innerHTML = `<p style="color:var(--accent-red);margin-top:0.5rem;">${result.message}</p>`; }
+            } catch (error) { statusDiv.innerHTML = `<p style="color:var(--accent-red);margin-top:0.5rem;">Error: ${error.message}</p>`; }
+            finally { btn.textContent = 'Scan Trades'; btn.disabled = false; }
+        });
+
+        // ===== DAILY TRADING VOLUME CHART =====
+        const SB_URL = 'https://sdcxusytmxaecfnfzweu.supabase.co';
+        const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkY3h1c3l0bXhhZWNmbmZ6d2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTExNzUsImV4cCI6MjA4NTc4NzE3NX0.oG8UPS9OoXts8CrBVCkCfLBQaLLhSSBx7u1xuCJrTW8';
+        let dailyVolChart = null;
+        let dailyVolOverviewChart = null;
+        let dailyVolData = null;
+        let volMode = 'daily';
+        let volAllDates = [];
+        let volAllDateMap = {};
+        let volAllDeployers = [];
+        let volRangeStart = 0;
+        let volRangeEnd = 1;
+
+        const DEPLOYER_LOGOS = {
+            xyz: 'images/xyz.svg',
+            cash: 'images/dreamcash.jpg',
+            flx: 'images/felix.svg',
+            hyna: 'images/hyena.svg',
+            km: 'images/markets.svg',
+            vntl: 'images/ventuals.svg'
+        };
+        const DEPLOYER_NAMES = {
+            xyz: 'TradeXYZ',
+            cash: 'Dreamcash',
+            flx: 'Felix',
+            hyna: 'HyENA',
+            km: 'Kinetiq',
+            vntl: 'Ventuals'
+        };
+
+        async function fetchDailyVolume() {
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/hip3_daily_stats?select=date,deployer,volume,trades_count&order=date.asc`, {
+                    headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` }
+                });
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    dailyVolData = data;
+                    processVolData();
+                    renderDailyVolumeChart();
+                    renderVolOverview();
+                    initRangeSelector();
+                    renderDailyTradesChart();
+                    renderDailyFeesChart();
+                }
+            } catch (e) {
+                console.error('Error fetching daily volume:', e);
+            }
+        }
+
+        function processVolData() {
+            volAllDateMap = {};
+            const deployerSet = new Set();
+            dailyVolData.forEach(row => {
+                if (!volAllDateMap[row.date]) volAllDateMap[row.date] = {};
+                volAllDateMap[row.date][row.deployer] = parseFloat(row.volume) || 0;
+                deployerSet.add(row.deployer);
+            });
+            volAllDates = Object.keys(volAllDateMap).sort();
+            volAllDeployers = [...deployerSet].sort((a, b) => {
+                const totalA = dailyVolData.filter(r => r.deployer === a).reduce((s, r) => s + parseFloat(r.volume || 0), 0);
+                const totalB = dailyVolData.filter(r => r.deployer === b).reduce((s, r) => s + parseFloat(r.volume || 0), 0);
+                return totalB - totalA;
+            });
+        }
+
+        function setVolMode(mode) {
+            volMode = mode;
+            document.getElementById('volModeDaily').style.background = mode === 'daily' ? 'var(--accent-cyan)' : 'var(--bg-tertiary)';
+            document.getElementById('volModeDaily').style.color = mode === 'daily' ? '#080d12' : 'var(--text-muted)';
+            document.getElementById('volModeCumul').style.background = mode === 'cumulative' ? 'var(--accent-cyan)' : 'var(--bg-tertiary)';
+            document.getElementById('volModeCumul').style.color = mode === 'cumulative' ? '#080d12' : 'var(--text-muted)';
+            renderDailyVolumeChart();
+        }
+
+        function fmtVol(v) {
+            if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+            if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+            if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+            return '$' + v.toFixed(0);
+        }
+
+        let dailyTradesChart = null;
+
+        function fmtCount(v) {
+            if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+            if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+            return v.toLocaleString();
+        }
+
+        function makeExternalTooltip(tooltipEl, dates, formatVal, unit) {
+            return (context) => {
+                const { chart, tooltip } = context;
+                if (tooltip.opacity === 0) { tooltipEl.style.display = 'none'; return; }
+                const dateIdx = tooltip.dataPoints?.[0]?.dataIndex;
+                if (dateIdx === undefined) return;
+
+                let rows = [];
+                tooltip.dataPoints.forEach(dp => {
+                    const dep = dp.dataset.label;
+                    const val = dp.raw;
+                    if (val > 0) rows.push({ dep, val, color: DEPLOYER_COLORS[dep] || '#6b7280' });
+                });
+                rows.sort((a, b) => b.val - a.val);
+                const total = rows.reduce((s, r) => s + r.val, 0);
+
+                let html = `<div style="font-family:Outfit;font-size:12px;color:#94a3b8;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08);">${dates[dateIdx]}</div>`;
+                rows.forEach(r => {
+                    const logo = DEPLOYER_LOGOS[r.dep];
+                    const name = DEPLOYER_NAMES[r.dep] || r.dep.toUpperCase();
+                    const logoHtml = logo ? `<img src="${logo}" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:4px;" onerror="this.style.display='none'">` : '';
+                    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></span>
+                            ${logoHtml}
+                            <span style="font-family:Outfit;font-size:12px;color:#e2e8f0;font-weight:${r === rows[0] ? '700' : '400'}">${name}</span>
+                        </div>
+                        <span style="font-family:JetBrains Mono;font-size:12px;color:#fff;font-weight:${r === rows[0] ? '700' : '500'}">${formatVal(r.val)}${unit ? ' ' + unit : ''}</span>
+                    </div>`;
+                });
+                html += `<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-family:Outfit;font-size:12px;color:#94a3b8;">Total</span>
+                    <span style="font-family:JetBrains Mono;font-size:13px;color:#fff;font-weight:700;">${formatVal(total)}${unit ? ' ' + unit : ''}</span>
+                </div>`;
+
+                tooltipEl.innerHTML = html;
+                tooltipEl.style.display = 'block';
+                let left = tooltip.caretX + chart.canvas.offsetLeft + 15;
+                let top = tooltip.caretY + chart.canvas.offsetTop - 20;
+                const ttWidth = tooltipEl.offsetWidth || 220;
+                const ttHeight = tooltipEl.offsetHeight || 200;
+                const cardRect = chart.canvas.closest('.card').getBoundingClientRect();
+                if (left + ttWidth > cardRect.width - 10) left = tooltip.caretX + chart.canvas.offsetLeft - ttWidth - 15;
+                if (top + ttHeight > cardRect.height - 10) top = cardRect.height - ttHeight - 10;
+                if (top < 0) top = 10;
+                tooltipEl.style.left = left + 'px';
+                tooltipEl.style.top = top + 'px';
+            };
+        }
+
+        function renderDailyTradesChart() {
+            if (!volAllDates.length || !dailyVolData.length) return;
+
+            // Build trades map: date -> deployer -> count
+            const tradesMap = {};
+            dailyVolData.forEach(row => {
+                if (!tradesMap[row.date]) tradesMap[row.date] = {};
+                tradesMap[row.date][row.deployer] = parseInt(row.trades_count) || 0;
+            });
+
+            const dates = volAllDates;
+            const labels = dates.map(d => {
+                const [y, m, day] = d.split('-');
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return months[parseInt(m) - 1] + ' ' + parseInt(day);
+            });
+
+            const datasets = volAllDeployers.map(dep => ({
+                label: dep,
+                data: dates.map(d => tradesMap[d]?.[dep] || 0),
+                backgroundColor: DEPLOYER_COLORS[dep] || '#6b7280',
+                borderRadius: 2,
+                borderSkipped: false
+            }));
+
+            const canvas = document.getElementById('dailyTradesChart');
+            if (dailyTradesChart) { dailyTradesChart.destroy(); dailyTradesChart = null; }
+
+            const tradesTooltip = document.getElementById('tradesTooltip');
+            const tradesExtTooltip = makeExternalTooltip(tradesTooltip, dates, fmtCount, 'trades');
+
+            dailyTradesChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#5a6a7e', font: { size: 10 }, maxTicksLimit: 12 }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: {
+                                color: '#5a6a7e',
+                                font: { size: 10 },
+                                callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false, external: tradesExtTooltip },
+                        zoom: {
+                            pan: { enabled: true, mode: 'x' },
+                            zoom: {
+                                wheel: { enabled: true, speed: 0.1 },
+                                pinch: { enabled: true },
+                                mode: 'x'
+                            },
+                            limits: { x: { minRange: 3 } }
+                        }
+                    }
+                }
+            });
+
+            canvas.addEventListener('dblclick', () => { if (dailyTradesChart) dailyTradesChart.resetZoom(); });
+        }
+
+        let dailyFeesChart = null;
+        const FEE_RATE_CHART = 0.0001;
+
+        function renderDailyFeesChart() {
+            if (!volAllDates.length || !dailyVolData.length) return;
+
+            const dates = volAllDates;
+            const labels = dates.map(d => {
+                const [y, m, day] = d.split('-');
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return months[parseInt(m) - 1] + ' ' + parseInt(day);
+            });
+
+            const datasets = volAllDeployers.map(dep => ({
+                label: dep,
+                data: dates.map(d => (volAllDateMap[d]?.[dep] || 0) * FEE_RATE_CHART),
+                backgroundColor: DEPLOYER_COLORS[dep] || '#6b7280',
+                borderRadius: 2,
+                borderSkipped: false
+            }));
+
+            const canvas = document.getElementById('dailyFeesChart');
+            if (dailyFeesChart) { dailyFeesChart.destroy(); dailyFeesChart = null; }
+
+            const feesTooltip = document.getElementById('feesTooltip');
+            const feesExtTooltip = makeExternalTooltip(feesTooltip, dates, v => '$' + (v >= 1e3 ? (v/1e3).toFixed(1)+'K' : v.toFixed(2)), '');
+
+            dailyFeesChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#5a6a7e', font: { size: 10 }, maxTicksLimit: 12 }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: {
+                                color: '#5a6a7e',
+                                font: { size: 10, family: "'JetBrains Mono', monospace" },
+                                callback: v => '$' + (v >= 1e3 ? (v/1e3).toFixed(0)+'K' : v.toFixed(0))
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false, external: feesExtTooltip },
+                        zoom: {
+                            pan: { enabled: true, mode: 'x' },
+                            zoom: {
+                                wheel: { enabled: true, speed: 0.1 },
+                                pinch: { enabled: true },
+                                mode: 'x'
+                            },
+                            limits: { x: { minRange: 3 } }
+                        }
+                    }
+                }
+            });
+
+            canvas.addEventListener('dblclick', () => { if (dailyFeesChart) dailyFeesChart.resetZoom(); });
+        }
+
+        let msMode = 'volume';
+        function setMarketShareMode(mode) {
+            msMode = mode;
+            const btnIds = { volume: 'msVolBtn', trades: 'msTradesBtn', oi: 'msOIBtn' };
+            Object.entries(btnIds).forEach(([m, id]) => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.background = m === mode ? 'var(--accent-cyan)' : 'var(--bg-tertiary)';
+                    btn.style.color = m === mode ? '#080d12' : 'var(--text-muted)';
+                }
+            });
+            renderMarketShare();
+        }
+
+        function renderMarketShare() {
+            const pieCanvas = document.getElementById('overviewVolPie');
+            const legendContainer = document.getElementById('marketShareLegend');
+            if (!pieCanvas || !legendContainer || !allMarkets.length) return;
+
+            // Compute data per deployer based on mode
+            const deployerData = {};
+            allMarkets.forEach(m => {
+                if (!deployerData[m.deployer]) deployerData[m.deployer] = 0;
+                if (msMode === 'volume') deployerData[m.deployer] += m.volume24h;
+                else if (msMode === 'oi') deployerData[m.deployer] += m.openInterest;
+            });
+
+            // For trades mode, use daily stats
+            if (msMode === 'trades' && dailyVolData.length > 0) {
+                Object.keys(deployerData).forEach(k => deployerData[k] = 0);
+                dailyVolData.forEach(row => {
+                    if (!deployerData[row.deployer]) deployerData[row.deployer] = 0;
+                    deployerData[row.deployer] += parseInt(row.trades_count) || 0;
+                });
+            }
+
+            // Sort by value descending
+            const sorted = Object.entries(deployerData).sort((a, b) => b[1] - a[1]);
+            const depNames = sorted.map(s => s[0]);
+            const depValues = sorted.map(s => s[1]);
+            const depColors = depNames.map(d => DEPLOYER_COLORS[d] || '#6b7280');
+            const total = depValues.reduce((a, b) => a + b, 0);
+
+            // Destroy old chart
+            if (overviewCharts.volPie) { overviewCharts.volPie.destroy(); overviewCharts.volPie = null; }
+
+            // Format value based on mode
+            const fmtVal = (v) => {
+                if (msMode === 'volume' || msMode === 'oi') return fmtVol(v);
+                if (msMode === 'trades') return v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? (v/1e3).toFixed(1)+'K' : v.toString();
+                return v.toString();
+            };
+
+            // Render doughnut
+            overviewCharts.volPie = new Chart(pieCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: depNames.map(d => DEPLOYER_NAMES[d] || d.toUpperCase()),
+                    datasets: [{
+                        data: depValues,
+                        backgroundColor: depColors,
+                        borderColor: '#0e151c',
+                        borderWidth: 2,
+                        hoverOffset: 8,
+                        hoverBorderWidth: 2,
+                        hoverBorderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#151d26',
+                            titleColor: '#edf2f7',
+                            bodyColor: '#94a3b8',
+                            borderColor: '#1c2736',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: ctx => {
+                                    const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                                    return ' ' + ctx.label + ': ' + fmtVal(ctx.raw) + ' (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Custom legend with logos
+            legendContainer.innerHTML = sorted.map(([dep, val], i) => {
+                const name = DEPLOYER_NAMES[dep] || dep.toUpperCase();
+                const logo = DEPLOYER_LOGOS[dep] || '';
+                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                const logoHtml = logo
+                    ? `<div style="width:20px;height:20px;min-width:20px;border-radius:50%;overflow:hidden;background:#1a2332;display:flex;align-items:center;justify-content:center;padding:2px;"><img src="${logo}" style="max-width:100%;max-height:100%;object-fit:contain;display:block;" onerror="this.parentElement.innerHTML='<span style=\\'width:16px;height:16px;border-radius:50%;background:${DEPLOYER_COLORS[dep] || '#6b7280'};display:block;\\'></span>'"></div>`
+                    : `<span style="width:20px;height:20px;min-width:20px;border-radius:50%;background:${DEPLOYER_COLORS[dep] || '#6b7280'};display:inline-block;"></span>`;
+
+                return `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);${i === 0 ? 'font-weight:600;' : ''}">
+                    ${logoHtml}
+                    <span style="flex:1;font-size:0.8125rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--text-primary);font-weight:600;white-space:nowrap;">${fmtVal(val)}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);min-width:42px;text-align:right;">${pct}%</span>
+                </div>`;
+            }).join('');
+        }
+
+        function renderDailyVolumeChart() {
+            if (!volAllDates.length) return;
+
+            const startIdx = Math.floor(volRangeStart * volAllDates.length);
+            const endIdx = Math.max(startIdx + 1, Math.ceil(volRangeEnd * volAllDates.length));
+            const dates = volAllDates.slice(startIdx, endIdx);
+
+            const datasets = volAllDeployers.map(dep => {
+                let values = dates.map(d => volAllDateMap[d]?.[dep] || 0);
+                if (volMode === 'cumulative') {
+                    // For cumulative, start from global 0 up to startIdx
+                    let preCumul = 0;
+                    for (let i = 0; i < startIdx; i++) {
+                        preCumul += volAllDateMap[volAllDates[i]]?.[dep] || 0;
+                    }
+                    let cumul = preCumul;
+                    values = values.map(v => { cumul += v; return cumul; });
+                }
+                return {
+                    label: dep,
+                    data: values,
+                    backgroundColor: DEPLOYER_COLORS[dep] || '#6b7280',
+                    borderRadius: volMode === 'daily' ? 2 : 0,
+                    borderSkipped: false
+                };
+            });
+
+            const labels = dates.map(d => {
+                const [y, m, day] = d.split('-');
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return months[parseInt(m) - 1] + ' ' + parseInt(day);
+            });
+
+            const canvas = document.getElementById('dailyVolumeChart');
+            if (dailyVolChart) {
+                dailyVolChart.destroy();
+                dailyVolChart = null;
+            }
+
+            const volTooltip = document.getElementById('volTooltip');
+
+            const externalTooltipHandler = (context) => {
+                const { chart, tooltip } = context;
+                if (tooltip.opacity === 0) {
+                    volTooltip.style.display = 'none';
+                    return;
+                }
+
+                const dateIdx = tooltip.dataPoints?.[0]?.dataIndex;
+                if (dateIdx === undefined) return;
+
+                const dateLabel = dates[dateIdx];
+                const dateStr = dateLabel;
+
+                // Build tooltip rows sorted by value desc
+                let rows = [];
+                tooltip.dataPoints.forEach(dp => {
+                    const dep = dp.dataset.label;
+                    const val = dp.raw;
+                    if (val > 0) {
+                        rows.push({ dep, val, color: DEPLOYER_COLORS[dep] || '#6b7280' });
+                    }
+                });
+                rows.sort((a, b) => b.val - a.val);
+
+                const total = rows.reduce((s, r) => s + r.val, 0);
+
+                let html = `<div style="font-family:Outfit;font-size:12px;color:#94a3b8;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.08);">${dateStr}</div>`;
+                rows.forEach(r => {
+                    const logo = DEPLOYER_LOGOS[r.dep];
+                    const name = DEPLOYER_NAMES[r.dep] || r.dep.toUpperCase();
+                    const logoHtml = logo
+                        ? `<img src="${logo}" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:4px;" onerror="this.style.display='none'">`
+                        : '';
+                    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></span>
+                            ${logoHtml}
+                            <span style="font-family:Outfit;font-size:12px;color:#e2e8f0;font-weight:${r === rows[0] ? '700' : '400'}">${name}</span>
+                        </div>
+                        <span style="font-family:JetBrains Mono;font-size:12px;color:#fff;font-weight:${r === rows[0] ? '700' : '500'}">${fmtVol(r.val)}</span>
+                    </div>`;
+                });
+                html += `<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-family:Outfit;font-size:12px;color:#94a3b8;">Total</span>
+                    <span style="font-family:JetBrains Mono;font-size:13px;color:#fff;font-weight:700;">${fmtVol(total)}</span>
+                </div>`;
+
+                volTooltip.innerHTML = html;
+                volTooltip.style.display = 'block';
+
+                const chartRect = chart.canvas.getBoundingClientRect();
+                const cardRect = chart.canvas.closest('.card').getBoundingClientRect();
+                let left = tooltip.caretX + chart.canvas.offsetLeft + 15;
+                let top = tooltip.caretY + chart.canvas.offsetTop - 20;
+
+                // Keep tooltip inside card
+                const ttWidth = volTooltip.offsetWidth || 220;
+                const ttHeight = volTooltip.offsetHeight || 200;
+                if (left + ttWidth > cardRect.width - 10) left = tooltip.caretX + chart.canvas.offsetLeft - ttWidth - 15;
+                if (top + ttHeight > cardRect.height - 10) top = cardRect.height - ttHeight - 10;
+                if (top < 0) top = 10;
+
+                volTooltip.style.left = left + 'px';
+                volTooltip.style.top = top + 'px';
+            };
+
+            dailyVolChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { color: '#1c2736' },
+                            ticks: { color: '#5a6a7e', font: { family: 'Outfit', size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: '#1c2736' },
+                            ticks: {
+                                color: '#5a6a7e',
+                                font: { family: 'JetBrains Mono', size: 11 },
+                                callback: v => {
+                                    if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+                                    if (v >= 1e6) return '$' + (v / 1e6).toFixed(0) + 'M';
+                                    if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+                                    return '$' + v;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: false,
+                            external: externalTooltipHandler
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                                modifierKey: null
+                            },
+                            zoom: {
+                                wheel: { enabled: true, speed: 0.1 },
+                                pinch: { enabled: true },
+                                mode: 'x',
+                                onZoomComplete: ({ chart }) => {
+                                    // Sync range selector with zoom
+                                    const xScale = chart.scales.x;
+                                    const totalBars = chart.data.labels.length;
+                                    if (totalBars > 0) {
+                                        const minIdx = Math.max(0, Math.floor(xScale.min));
+                                        const maxIdx = Math.min(totalBars - 1, Math.ceil(xScale.max));
+                                        // Update range selector visually
+                                    }
+                                }
+                            },
+                            limits: {
+                                x: { minRange: 3 }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Hide tooltip when mouse leaves chart
+            canvas.addEventListener('mouseleave', () => {
+                volTooltip.style.display = 'none';
+            });
+
+            // Double-click to reset zoom
+            canvas.addEventListener('dblclick', () => {
+                if (dailyVolChart) {
+                    dailyVolChart.resetZoom();
+                }
+            });
+        }
+
+        // Mini overview chart for range selector
+        function renderVolOverview() {
+            if (!volAllDates.length) return;
+            const canvas = document.getElementById('dailyVolOverview');
+            if (dailyVolOverviewChart) { dailyVolOverviewChart.destroy(); dailyVolOverviewChart = null; }
+
+            // Build total volume per date
+            const totals = volAllDates.map(d => {
+                let sum = 0;
+                volAllDeployers.forEach(dep => { sum += volAllDateMap[d]?.[dep] || 0; });
+                return sum;
+            });
+
+            dailyVolOverviewChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: volAllDates,
+                    datasets: [{
+                        data: totals,
+                        backgroundColor: 'rgba(0,194,255,0.3)',
+                        borderRadius: 1,
+                        barPercentage: 1,
+                        categoryPercentage: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { display: false, stacked: true },
+                        y: { display: false, beginAtZero: true }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        }
+
+        // Range selector logic
+        function initRangeSelector() {
+            const container = document.getElementById('rangeSelector');
+            const win = document.getElementById('rangeWindow');
+            const maskL = document.getElementById('rangeMask');
+            const maskR = document.getElementById('rangeMaskR');
+            const handleL = document.getElementById('rangeHandleL');
+            const handleR = document.getElementById('rangeHandleR');
+            let dragging = null; // 'left', 'right', 'window'
+            let dragStartX = 0;
+            let dragStartRangeStart = 0;
+            let dragStartRangeEnd = 0;
+
+            function updateRangeUI() {
+                const w = container.offsetWidth;
+                const left = volRangeStart * w;
+                const right = volRangeEnd * w;
+                win.style.left = left + 'px';
+                win.style.width = (right - left) + 'px';
+                maskL.style.left = '0';
+                maskL.style.width = left + 'px';
+                maskR.style.left = right + 'px';
+                maskR.style.width = (w - right) + 'px';
+            }
+
+            updateRangeUI();
+
+            function getX(e) {
+                const rect = container.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            }
+
+            handleL.addEventListener('mousedown', e => { e.stopPropagation(); dragging = 'left'; dragStartX = getX(e); });
+            handleR.addEventListener('mousedown', e => { e.stopPropagation(); dragging = 'right'; dragStartX = getX(e); });
+            win.addEventListener('mousedown', e => {
+                if (e.target === handleL || e.target === handleR) return;
+                dragging = 'window';
+                dragStartX = getX(e);
+                dragStartRangeStart = volRangeStart;
+                dragStartRangeEnd = volRangeEnd;
+                win.style.cursor = 'grabbing';
+            });
+
+            // Touch support
+            handleL.addEventListener('touchstart', e => { e.stopPropagation(); dragging = 'left'; dragStartX = getX(e); }, { passive: true });
+            handleR.addEventListener('touchstart', e => { e.stopPropagation(); dragging = 'right'; dragStartX = getX(e); }, { passive: true });
+            win.addEventListener('touchstart', e => {
+                if (e.target === handleL || e.target === handleR) return;
+                dragging = 'window';
+                dragStartX = getX(e);
+                dragStartRangeStart = volRangeStart;
+                dragStartRangeEnd = volRangeEnd;
+            }, { passive: true });
+
+            function onMove(e) {
+                if (!dragging) return;
+                const x = getX(e);
+                const minRange = 3 / Math.max(1, volAllDates.length); // min 3 days
+                if (dragging === 'left') {
+                    volRangeStart = Math.max(0, Math.min(volRangeEnd - minRange, x));
+                } else if (dragging === 'right') {
+                    volRangeEnd = Math.min(1, Math.max(volRangeStart + minRange, x));
+                } else if (dragging === 'window') {
+                    const delta = x - dragStartX;
+                    const width = dragStartRangeEnd - dragStartRangeStart;
+                    let newStart = dragStartRangeStart + delta;
+                    let newEnd = dragStartRangeEnd + delta;
+                    if (newStart < 0) { newStart = 0; newEnd = width; }
+                    if (newEnd > 1) { newEnd = 1; newStart = 1 - width; }
+                    volRangeStart = newStart;
+                    volRangeEnd = newEnd;
+                }
+                updateRangeUI();
+                renderDailyVolumeChart();
+            }
+
+            function onEnd() {
+                dragging = null;
+                win.style.cursor = 'grab';
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onEnd);
+            document.addEventListener('touchmove', onMove, { passive: true });
+            document.addEventListener('touchend', onEnd);
+        }
+
+        // Fetch daily volume on page load
+        fetchDailyVolume();
+
+        // ===== FUNDING RATE HEATMAP =====
+        let heatmapData = null; // { tickers: [...], dates: [...], matrix: [[apr, ...], ...] }
+        let heatmapContrast = 150;
+        let fundingRawCache = {}; // coin -> [{time, fundingRate}, ...]
+        let heatmapInitialized = false;
+
+        // Color interpolation
+        function lerpColor(a, b, t) {
+            t = Math.max(0, Math.min(1, t));
+            const ah = parseInt(a.replace('#',''), 16);
+            const bh = parseInt(b.replace('#',''), 16);
+            const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+            const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+            const rr = Math.round(ar + (br - ar) * t);
+            const rg = Math.round(ag + (bg - ag) * t);
+            const rb = Math.round(ab + (bb - ab) * t);
+            return `rgb(${rr},${rg},${rb})`;
+        }
+
+        function fundingToColor(aprPercent, maxAbs) {
+            // Gradient matching legend: purple → blue → cyan → teal → green → lime → yellow → orange → red
+            const stops = [
+                { pos: -1, color: '#7c3aed' },   // deep purple
+                { pos: -0.5, color: '#3b82f6' },  // blue
+                { pos: -0.15, color: '#06b6d4' }, // cyan
+                { pos: 0, color: '#0d9488' },     // teal (neutral)
+                { pos: 0.15, color: '#10b981' },  // green
+                { pos: 0.35, color: '#84cc16' },  // lime
+                { pos: 0.55, color: '#eab308' },  // yellow
+                { pos: 0.75, color: '#f97316' },  // orange
+                { pos: 1, color: '#ef4444' }      // red
+            ];
+            
+            const norm = maxAbs > 0 ? aprPercent / maxAbs : 0;
+            const clamped = Math.max(-1, Math.min(1, norm));
+            
+            // Find the two stops to interpolate between
+            for (let i = 0; i < stops.length - 1; i++) {
+                if (clamped >= stops[i].pos && clamped <= stops[i+1].pos) {
+                    const t = (clamped - stops[i].pos) / (stops[i+1].pos - stops[i].pos);
+                    return lerpColor(stops[i].color, stops[i+1].color, t);
+                }
+            }
+            return clamped < 0 ? stops[0].color : stops[stops.length-1].color;
+        }
+
+        async function fetchFundingForCoin(coin, startTime) {
+            try {
+                const res = await fetch('https://api.hyperliquid.xyz/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'fundingHistory', coin, startTime })
+                });
+                const data = await res.json();
+                if (Array.isArray(data)) return data;
+                return [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function loadFundingHeatmapData(days = 7) {
+            if (allMarkets.length === 0) return null;
+
+            const startTime = Date.now() - days * 24 * 60 * 60 * 1000;
+            
+            // Group markets by ticker, pick the most active deployer for each
+            const tickerMap = {};
+            allMarkets.forEach(m => {
+                if (!tickerMap[m.ticker]) tickerMap[m.ticker] = [];
+                tickerMap[m.ticker].push(m);
+            });
+
+            // Sort tickers by total volume, take top 30
+            const sortedTickers = Object.entries(tickerMap)
+                .map(([ticker, markets]) => ({
+                    ticker,
+                    markets,
+                    totalVol: markets.reduce((s, m) => s + m.volume24h, 0)
+                }))
+                .sort((a, b) => b.totalVol - a.totalVol)
+                .slice(0, 30);
+
+            const progressEl = document.getElementById('heatmapProgress');
+            const allResults = {};
+            let completed = 0;
+
+            // Fetch in parallel batches of 5
+            for (let i = 0; i < sortedTickers.length; i += 5) {
+                const batch = sortedTickers.slice(i, i + 5);
+                const promises = batch.map(async ({ ticker, markets }) => {
+                    // Try all deployers for this ticker, merge/average
+                    const allEntries = [];
+                    for (const m of markets) {
+                        const cacheKey = `${m.name}_${days}`;
+                        let entries;
+                        if (fundingRawCache[cacheKey]) {
+                            entries = fundingRawCache[cacheKey];
+                        } else {
+                            entries = await fetchFundingForCoin(m.name, startTime);
+                            fundingRawCache[cacheKey] = entries;
+                        }
+                        if (entries.length > 0) {
+                            allEntries.push({ deployer: m.deployer, entries });
+                        }
+                    }
+                    completed++;
+                    if (progressEl) progressEl.textContent = `Fetching rates for ${completed}/${sortedTickers.length} markets...`;
+                    return { ticker, allEntries };
+                });
+                const results = await Promise.all(promises);
+                results.forEach(r => { allResults[r.ticker] = r.allEntries; });
+            }
+
+            // Build time grid (hourly buckets)
+            const hourMs = 60 * 60 * 1000;
+            const startHour = Math.ceil(startTime / hourMs) * hourMs;
+            const endHour = Math.floor(Date.now() / hourMs) * hourMs;
+            const dates = [];
+            for (let t = startHour; t <= endHour; t += hourMs) {
+                dates.push(t);
+            }
+
+            // Build matrix: for each ticker, for each hour, compute average APR across deployers
+            const tickers = [];
+            const matrix = [];
+            
+            for (const { ticker } of sortedTickers) {
+                const deployers = allResults[ticker] || [];
+                if (deployers.length === 0) continue;
+
+                // Merge all entries into hourly buckets
+                const hourlyMap = {};
+                deployers.forEach(({ entries }) => {
+                    entries.forEach(e => {
+                        const h = Math.floor(e.time / hourMs) * hourMs;
+                        if (!hourlyMap[h]) hourlyMap[h] = [];
+                        hourlyMap[h].push(parseFloat(e.fundingRate));
+                    });
+                });
+
+                // Build row
+                const row = dates.map(t => {
+                    const vals = hourlyMap[t];
+                    if (!vals || vals.length === 0) return null;
+                    const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+                    return avg * 8760 * 100; // to APR %: rate * 8760h * 100
+                });
+
+                // Only include if we have some data
+                if (row.some(v => v !== null)) {
+                    tickers.push(ticker);
+                    matrix.push(row);
+                }
+            }
+
+            return { tickers, dates, matrix };
+        }
+
+        function drawHeatmap() {
+            if (!heatmapData || heatmapData.tickers.length === 0) return;
+
+            const { tickers, dates, matrix } = heatmapData;
+            const canvas = document.getElementById('fundingHeatmap');
+            const ctx = canvas.getContext('2d');
+
+            // Dimensions - cells fill available width, fixed height
+            const labelWidth = 80;
+            const topPadding = 30;
+            const bottomPadding = 60;
+            const statsWidth = 260;
+            
+            const containerWidth = canvas.parentElement.clientWidth || 900;
+            const availWidth = containerWidth - labelWidth - statsWidth - 20;
+            const cellWidth = Math.max(1, Math.floor(availWidth / dates.length));
+            const cellHeight = 16; // Fixed readable row height
+            
+            const totalCellsWidth = cellWidth * dates.length;
+            const totalWidth = labelWidth + totalCellsWidth + statsWidth + 20;
+            const totalHeight = topPadding + cellHeight * tickers.length + bottomPadding;
+
+            canvas.width = totalWidth * (window.devicePixelRatio || 1);
+            canvas.height = totalHeight * (window.devicePixelRatio || 1);
+            canvas.style.width = totalWidth + 'px';
+            canvas.style.height = totalHeight + 'px';
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+            // Clear
+            ctx.fillStyle = '#0e151c';
+            ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+            // Compute maxAbs based on contrast
+            const maxAbs = heatmapContrast;
+
+            // Draw cells - square with minimal gap
+            for (let row = 0; row < tickers.length; row++) {
+                for (let col = 0; col < dates.length; col++) {
+                    const val = matrix[row][col];
+                    const x = labelWidth + col * cellWidth;
+                    const y = topPadding + row * cellHeight;
+                    
+                    if (val === null) {
+                        ctx.fillStyle = '#0a1117';
+                    } else {
+                        ctx.fillStyle = fundingToColor(val, maxAbs);
+                    }
+                    ctx.fillRect(x, y, cellWidth, cellHeight);
+                }
+            }
+
+            // Draw Y-axis labels (tickers)
+            ctx.fillStyle = '#94a3b8';
+            const tickerFontSize = Math.min(11, Math.max(8, cellHeight - 2));
+            ctx.font = `${tickerFontSize}px "Outfit", sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i < tickers.length; i++) {
+                const y = topPadding + i * cellHeight + cellHeight / 2;
+                ctx.fillText(tickers[i], labelWidth - 6, y);
+            }
+
+            // Stats columns header
+            const statsX = labelWidth + totalCellsWidth + 12;
+            ctx.fillStyle = '#5a6a7e';
+            ctx.font = '600 9px "Outfit", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('CURRENT', statsX + 30, topPadding - 4);
+            ctx.fillText('24H AVG', statsX + 100, topPadding - 4);
+            ctx.fillText('7D AVG', statsX + 170, topPadding - 4);
+
+            // Compute and draw stats for each ticker
+            const period = parseInt(document.getElementById('fundingPeriod')?.value || '7');
+            const hoursPerDay = Math.floor(dates.length / Math.max(period, 1));
+
+            for (let i = 0; i < tickers.length; i++) {
+                const row = matrix[i];
+                const y = topPadding + i * cellHeight + cellHeight / 2;
+                
+                // Current: last non-null value
+                let current = null;
+                for (let c = row.length - 1; c >= 0; c--) {
+                    if (row[c] !== null) { current = row[c]; break; }
+                }
+                
+                // 24h avg: last ~24 entries (hourly)
+                const last24 = row.slice(-24).filter(v => v !== null);
+                const avg24 = last24.length > 0 ? last24.reduce((a, b) => a + b, 0) / last24.length : null;
+                
+                // 7d avg: all entries
+                const allValid = row.filter(v => v !== null);
+                const avg7d = allValid.length > 0 ? allValid.reduce((a, b) => a + b, 0) / allValid.length : null;
+
+                // Draw values
+                const drawStat = (val, x) => {
+                    if (val === null) {
+                        ctx.fillStyle = '#2a3441';
+                        ctx.fillText('—', x, y);
+                        return;
+                    }
+                    const absVal = Math.abs(val);
+                    if (val > 10) ctx.fillStyle = '#ef4444';
+                    else if (val > 0) ctx.fillStyle = '#f59e0b';
+                    else if (val > -10) ctx.fillStyle = '#10b981';
+                    else ctx.fillStyle = '#3b82f6';
+                    
+                    const sign = val >= 0 ? '+' : '';
+                    ctx.fillText(sign + val.toFixed(1) + '%', x, y);
+                };
+
+                const statsFontSize = Math.min(11, Math.max(7, cellHeight - 1));
+                ctx.font = `${statsFontSize}px "Outfit", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                drawStat(current, statsX + 30);
+                drawStat(avg24, statsX + 100);
+                drawStat(avg7d, statsX + 170);
+
+                // Subtle separator line
+                if (i < tickers.length - 1) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(statsX, topPadding + (i + 1) * cellHeight);
+                    ctx.lineTo(statsX + statsWidth - 20, topPadding + (i + 1) * cellHeight);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw X-axis date labels
+            ctx.fillStyle = '#5a6a7e';
+            ctx.font = '10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            let labelInterval;
+            if (period <= 1) labelInterval = 4;
+            else if (period <= 2) labelInterval = 8;
+            else if (period <= 7) labelInterval = 24;
+            else labelInterval = 48;
+
+            for (let col = 0; col < dates.length; col += labelInterval) {
+                const x = labelWidth + col * cellWidth + cellWidth / 2;
+                const y = topPadding + tickers.length * cellHeight + 8;
+                const d = new Date(dates[col]);
+                let label;
+                if (period <= 2) {
+                    label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\n' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                } else {
+                    label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+                ctx.fillText(label, x, y);
+            }
+
+            // Store cell layout for tooltip
+            canvas._heatmapLayout = { labelWidth, topPadding, cellWidth, cellHeight, tickers, dates, matrix, maxAbs };
+        }
+
+        function setupHeatmapTooltip() {
+            const canvas = document.getElementById('fundingHeatmap');
+            const tooltip = document.getElementById('heatmapTooltip');
+            
+            canvas.addEventListener('mousemove', (e) => {
+                const layout = canvas._heatmapLayout;
+                if (!layout) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.clientWidth / (canvas.width / (window.devicePixelRatio || 1));
+                const scaleY = canvas.clientHeight / (canvas.height / (window.devicePixelRatio || 1));
+                const mx = (e.clientX - rect.left) / scaleX;
+                const my = (e.clientY - rect.top) / scaleY;
+
+                const col = Math.floor((mx - layout.labelWidth) / layout.cellWidth);
+                const row = Math.floor((my - layout.topPadding) / layout.cellHeight);
+
+                if (row >= 0 && row < layout.tickers.length && col >= 0 && col < layout.dates.length) {
+                    const ticker = layout.tickers[row];
+                    const date = new Date(layout.dates[col]);
+                    const val = layout.matrix[row][col];
+                    
+                    const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    
+                    let valStr, valColor;
+                    if (val === null) {
+                        valStr = 'No data';
+                        valColor = '#5a6a7e';
+                    } else {
+                        valStr = (val >= 0 ? '+' : '') + val.toFixed(2) + '% APR';
+                        valColor = val > 5 ? '#f97316' : val > 0 ? '#eab308' : val > -5 ? '#3b82f6' : '#7c3aed';
+                    }
+
+                    tooltip.innerHTML = `
+                        <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.375rem;">${ticker}</div>
+                        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.375rem;">${dateStr} · ${timeStr}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:0.9375rem;font-weight:600;color:${valColor};">${valStr}</div>
+                    `;
+                    
+                    tooltip.style.display = 'block';
+                    
+                    // Position tooltip
+                    let tx = e.clientX + 14;
+                    let ty = e.clientY - 10;
+                    if (tx + 220 > window.innerWidth) tx = e.clientX - 230;
+                    if (ty + 100 > window.innerHeight) ty = e.clientY - 100;
+                    tooltip.style.left = tx + 'px';
+                    tooltip.style.top = ty + 'px';
+                    
+                    canvas.style.cursor = 'crosshair';
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
+        }
+
+        async function initFundingHeatmap(days = 7) {
+            const loading = document.getElementById('heatmapLoading');
+            const wrapper = document.getElementById('heatmapWrapper');
+            
+            loading.style.display = 'block';
+            wrapper.style.display = 'none';
+
+            heatmapData = await loadFundingHeatmapData(days);
+
+            if (!heatmapData || heatmapData.tickers.length === 0) {
+                loading.innerHTML = `<div class="empty-state"><img src="images/sweating.png" alt="" style="width:100px;height:100px;" /><h3>No funding data available</h3><p>Could not fetch historical funding rates from Hyperliquid</p></div>`;
+                return;
+            }
+
+            loading.style.display = 'none';
+            wrapper.style.display = 'block';
+
+            drawHeatmap();
+            
+            if (!heatmapInitialized) {
+                setupHeatmapTooltip();
+                heatmapInitialized = true;
+            }
+        }
+
+        // Period selector
+        document.getElementById('fundingPeriod')?.addEventListener('change', (e) => {
+            const days = parseInt(e.target.value);
+            fundingRawCache = {}; // clear cache for new period
+            initFundingHeatmap(days);
+        });
+
+        // Contrast slider
+        function updateContrastThumb() {
+            const slider = document.getElementById('contrastSlider');
+            const thumb = document.getElementById('contrastThumb');
+            if (!slider || !thumb) return;
+            const pct = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+            thumb.style.left = pct + '%';
+        }
+        updateContrastThumb();
+
+        document.getElementById('contrastSlider')?.addEventListener('input', (e) => {
+            heatmapContrast = parseInt(e.target.value);
+            document.getElementById('legendMin').textContent = '-' + heatmapContrast + '% APR';
+            document.getElementById('legendMax').textContent = '+' + heatmapContrast + '% APR';
+            updateContrastThumb();
+            if (heatmapData) drawHeatmap();
+        });
+
+        // Window resize
+        let heatmapResizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(heatmapResizeTimeout);
+            heatmapResizeTimeout = setTimeout(() => {
+                if (heatmapData && document.getElementById('fundingrate')?.classList.contains('active')) {
+                    drawHeatmap();
+                }
+            }, 200);
+        });
+
+        // Hook into nav: lazy-load funding heatmap
+        const origNavHandler = () => {};
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.view === 'fundingrate' && allMarkets.length > 0 && !heatmapData) {
+                    const days = parseInt(document.getElementById('fundingPeriod')?.value || '7');
+                    initFundingHeatmap(days);
+                }
+            });
+        });
+        // ===== LIQUIDATION DASHBOARD =====
+        let liqEvents = []; // [{time, coin, deployer, ticker, isLong, sz, px, ntlValue}, ...]
+        let liqDailyChart = null;
+        let liqHourlyChart = null;
+        let liqWs = null;
+        let liqWsRetries = 0;
+        let liqInitialized = false;
+
+        function getCoinDeployer(coin) {
+            const m = allMarkets.find(m => m.name === coin);
+            if (m) return { deployer: m.deployer, ticker: m.ticker };
+            // Fallback: parse from coin name
+            const parts = coin.split(':');
+            return { deployer: parts[0] || 'unknown', ticker: parts[1] || coin };
+        }
+
+        function formatLiqValue(val) {
+            if (val >= 1e6) return '$' + (val / 1e6).toFixed(2) + 'M';
+            if (val >= 1e3) return '$' + (val / 1e3).toFixed(1) + 'K';
+            return '$' + val.toFixed(0);
+        }
+
+        function connectLiquidationWs() {
+            if (liqWs && (liqWs.readyState === WebSocket.OPEN || liqWs.readyState === WebSocket.CONNECTING)) return;
+            
+            const dot = document.getElementById('wsDot');
+            const label = document.getElementById('wsLabel');
+            const status = document.getElementById('wsStatus');
+
+            try {
+                liqWs = new WebSocket('wss://api.hyperliquid.xyz/ws');
+                
+                liqWs.onopen = () => {
+                    liqWs.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'allLiquidations' } }));
+                    dot.style.background = '#10b981';
+                    label.textContent = 'Live';
+                    label.style.color = '#10b981';
+                    status.style.background = 'rgba(16,185,129,0.1)';
+                    status.style.borderColor = 'rgba(16,185,129,0.3)';
+                    liqWsRetries = 0;
+                    console.log('Liquidation WebSocket connected');
+                };
+
+                liqWs.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.channel === 'allLiquidations' && msg.data) {
+                            processLiquidation(msg.data);
+                        }
+                    } catch (e) {}
+                };
+
+                liqWs.onclose = () => {
+                    dot.style.background = '#f59e0b';
+                    label.textContent = 'Reconnecting...';
+                    label.style.color = '#f59e0b';
+                    status.style.background = 'rgba(245,158,11,0.1)';
+                    status.style.borderColor = 'rgba(245,158,11,0.3)';
+                    liqWsRetries++;
+                    const delay = Math.min(5000 * liqWsRetries, 30000);
+                    setTimeout(connectLiquidationWs, delay);
+                };
+
+                liqWs.onerror = () => {
+                    dot.style.background = '#ef4444';
+                    label.textContent = 'Error';
+                    label.style.color = '#ef4444';
+                    status.style.background = 'rgba(239,68,68,0.1)';
+                    status.style.borderColor = 'rgba(239,68,68,0.3)';
+                };
+
+            } catch (e) {
+                console.error('WebSocket error:', e);
+                setTimeout(connectLiquidationWs, 5000);
+            }
+        }
+
+        function processLiquidation(data) {
+            // Handle Hyperliquid liquidation data format
+            const liq = data.liquidation || data;
+            const coin = liq.coin || '';
+            
+            // Only track HIP-3 coins (contain ':')
+            if (!coin.includes(':')) return;
+            
+            const { deployer, ticker } = getCoinDeployer(coin);
+            const sz = parseFloat(liq.sz || liq.size || 0);
+            const px = parseFloat(liq.px || liq.markPx || liq.price || 0);
+            const ntlValue = parseFloat(liq.liquidatedNtlPos || liq.ntl || 0) || (sz * px);
+            
+            const event = {
+                time: Date.now(),
+                coin,
+                deployer,
+                ticker,
+                isLong: liq.isLong !== undefined ? liq.isLong : (liq.side === 'B' || liq.side === 'buy'),
+                sz,
+                px,
+                ntlValue: Math.abs(ntlValue),
+                user: liq.liquidatedUser || liq.user || ''
+            };
+
+            liqEvents.push(event);
+            
+            // Keep max 10000 events in memory
+            if (liqEvents.length > 10000) liqEvents = liqEvents.slice(-10000);
+
+            updateLiqStats();
+            updateLiqTopAssets();
+            updateLiqCharts();
+            addToLiqFeed(event);
+        }
+
+        function updateLiqStats() {
+            const now = Date.now();
+            const windows = [
+                { id: '1h', ms: 60 * 60 * 1000 },
+                { id: '4h', ms: 4 * 60 * 60 * 1000 },
+                { id: '12h', ms: 12 * 60 * 60 * 1000 },
+                { id: '24h', ms: 24 * 60 * 60 * 1000 }
+            ];
+
+            windows.forEach(w => {
+                const cutoff = now - w.ms;
+                const windowEvents = liqEvents.filter(e => e.time >= cutoff);
+                const totalVol = windowEvents.reduce((s, e) => s + e.ntlValue, 0);
+                const count = windowEvents.length;
+                
+                document.getElementById('liq' + w.id).textContent = formatLiqValue(totalVol);
+                document.getElementById('liq' + w.id + 'Count').textContent = count + ' event' + (count !== 1 ? 's' : '');
+            });
+        }
+
+        function updateLiqTopAssets() {
+            const assetMap = {};
+            liqEvents.forEach(e => {
+                const key = e.coin;
+                if (!assetMap[key]) assetMap[key] = { coin: e.coin, ticker: e.ticker, deployer: e.deployer, volume: 0, count: 0 };
+                assetMap[key].volume += e.ntlValue;
+                assetMap[key].count += 1;
+            });
+
+            const sorted = Object.values(assetMap).sort((a, b) => b.volume - a.volume).slice(0, 15);
+            const tbody = document.getElementById('liqTopAssets');
+
+            if (sorted.length === 0) return;
+
+            tbody.innerHTML = sorted.map((a, i) => {
+                const color = DEPLOYER_COLORS[a.deployer] || '#6b7280';
+                const avgSize = a.count > 0 ? a.volume / a.count : 0;
+                return `<tr>
+                    <td style="font-weight: 600;">${a.ticker}</td>
+                    <td><span style="color: ${color}; font-weight: 600; text-transform: uppercase;">${a.deployer}</span></td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">${formatLiqValue(a.volume)}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">${a.count}</td>
+                    <td style="text-align: right; font-family: 'JetBrains Mono', monospace;">${formatLiqValue(avgSize)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function addToLiqFeed(event) {
+            const feed = document.getElementById('liqFeed');
+            const direction = event.isLong ? 'LONG' : 'SHORT';
+            const dirColor = event.isLong ? '#10b981' : '#ef4444';
+            const deploColor = DEPLOYER_COLORS[event.deployer] || '#6b7280';
+            const time = new Date(event.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            const shortAddr = event.user ? event.user.slice(0, 6) + '...' + event.user.slice(-4) : '';
+
+            const el = document.createElement('div');
+            el.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 0.75rem; background: var(--bg-tertiary); border-radius: 8px; border-left: 3px solid ' + dirColor + '; font-size: 0.8125rem; animation: viewFade 0.3s ease-out;';
+            el.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">${time}</span>
+                    <span style="font-weight: 600;">${event.ticker}</span>
+                    <span style="color: ${deploColor}; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;">${event.deployer}</span>
+                    <span style="color: ${dirColor}; font-weight: 600; font-size: 0.75rem;">${direction}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent-red);">${formatLiqValue(event.ntlValue)}</span>
+                    ${shortAddr ? `<span style="color: var(--text-muted); font-size: 0.6875rem; font-family: 'JetBrains Mono', monospace;">${shortAddr}</span>` : ''}
+                </div>
+            `;
+
+            // Remove placeholder if present
+            if (feed.querySelector('.empty-state, [style*="text-align: center"]')) {
+                feed.innerHTML = '';
+            }
+
+            feed.insertBefore(el, feed.firstChild);
+
+            // Keep max 50 items in feed
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        function updateLiqCharts() {
+            if (liqEvents.length === 0) return;
+
+            const deployers = [...new Set(liqEvents.map(e => e.deployer))];
+
+            // ---- Daily Chart ----
+            const dayMap = {};
+            liqEvents.forEach(e => {
+                const day = new Date(e.time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (!dayMap[day]) dayMap[day] = {};
+                if (!dayMap[day][e.deployer]) dayMap[day][e.deployer] = 0;
+                dayMap[day][e.deployer] += e.ntlValue;
+            });
+
+            const dayLabels = Object.keys(dayMap);
+            const dayDatasets = deployers.map(d => ({
+                label: d.toUpperCase(),
+                data: dayLabels.map(day => dayMap[day]?.[d] || 0),
+                backgroundColor: DEPLOYER_COLORS[d] || '#6b7280',
+                borderRadius: 4,
+                borderSkipped: false
+            }));
+
+            const dailyCanvas = document.getElementById('liqDailyChart');
+            if (liqDailyChart) {
+                liqDailyChart.data.labels = dayLabels;
+                liqDailyChart.data.datasets = dayDatasets;
+                liqDailyChart.update('none');
+            } else {
+                liqDailyChart = new Chart(dailyCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: dayLabels, datasets: dayDatasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true, grid: { color: '#1c2736' }, ticks: { color: '#5a6a7e', font: { family: 'Outfit', size: 11 } } },
+                            y: { stacked: true, grid: { color: '#1c2736' }, ticks: { color: '#5a6a7e', font: { family: 'JetBrains Mono', size: 11 }, callback: v => formatLiqValue(v) } }
+                        },
+                        plugins: {
+                            legend: { position: 'top', labels: { color: '#94a3b8', padding: 12, font: { family: 'Outfit', size: 11 } } },
+                            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatLiqValue(ctx.raw) } }
+                        }
+                    }
+                });
+            }
+
+            // ---- Hourly Chart (last 24h) ----
+            const now = Date.now();
+            const hourMs = 60 * 60 * 1000;
+            const hourLabels = [];
+            const hourBuckets = {};
+
+            for (let i = 23; i >= 0; i--) {
+                const hourStart = Math.floor((now - i * hourMs) / hourMs) * hourMs;
+                const label = new Date(hourStart).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                hourLabels.push(label);
+                hourBuckets[label] = {};
+            }
+
+            liqEvents.forEach(e => {
+                if (e.time < now - 24 * hourMs) return;
+                const hourStart = Math.floor(e.time / hourMs) * hourMs;
+                const label = new Date(hourStart).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                if (hourBuckets[label] !== undefined) {
+                    if (!hourBuckets[label][e.deployer]) hourBuckets[label][e.deployer] = 0;
+                    hourBuckets[label][e.deployer] += e.ntlValue;
+                }
+            });
+
+            const hourDatasets = deployers.map(d => ({
+                label: d.toUpperCase(),
+                data: hourLabels.map(h => hourBuckets[h]?.[d] || 0),
+                backgroundColor: DEPLOYER_COLORS[d] || '#6b7280',
+                borderRadius: 2,
+                borderSkipped: false
+            }));
+
+            const hourlyCanvas = document.getElementById('liqHourlyChart');
+            if (liqHourlyChart) {
+                liqHourlyChart.data.labels = hourLabels;
+                liqHourlyChart.data.datasets = hourDatasets;
+                liqHourlyChart.update('none');
+            } else {
+                liqHourlyChart = new Chart(hourlyCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: hourLabels, datasets: hourDatasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true, grid: { color: '#1c2736' }, ticks: { color: '#5a6a7e', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45 } },
+                            y: { stacked: true, grid: { color: '#1c2736' }, ticks: { color: '#5a6a7e', font: { family: 'JetBrains Mono', size: 11 }, callback: v => formatLiqValue(v) } }
+                        },
+                        plugins: {
+                            legend: { position: 'top', labels: { color: '#94a3b8', padding: 12, font: { family: 'Outfit', size: 11 } } },
+                            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatLiqValue(ctx.raw) } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function initLiquidation() {
+            if (liqInitialized) return;
+            liqInitialized = true;
+            connectLiquidationWs();
+            
+            // Refresh stats every 30s (to update time windows)
+            setInterval(() => {
+                if (document.getElementById('liquidation')?.classList.contains('active')) {
+                    updateLiqStats();
+                }
+            }, 30000);
+        }
+
+        // Hook into nav: lazy-load liquidation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.view === 'liquidation') {
+                    initLiquidation();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
