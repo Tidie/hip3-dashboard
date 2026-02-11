@@ -2,10 +2,10 @@
   functions = "netlify/functions"
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
+# Extended timeout for leaderboard function (needs pagination for large accounts)
+# Pro plan allows up to 26 seconds
+[functions."leaderboard"]
+  external_node_modules = ["axios"]
+  timeout = 26
