@@ -2154,7 +2154,8 @@
         }
 
         // ===== LEADERBOARD =====
-        async function loadLeaderboard(page = 1) {
+        async function loadLeaderboard(page = 1, keepScroll = false) {
+            const scrollPos = keepScroll ? window.scrollY : null;
             currentLeaderboardPage = page;
             const tbody = document.querySelector('#leaderboardTable tbody');
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:3rem;"><span class="spinner"></span> Loading...</td></tr>';
@@ -2168,6 +2169,7 @@
             } catch (error) {
                 tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><img src="images/sweating.png" alt="" style="width:80px;height:80px;" /><h3>Failed to load leaderboard</h3><p>Check your connection and try again</p></div></td></tr>`;
             }
+            if (scrollPos !== null) { requestAnimationFrame(() => window.scrollTo(0, scrollPos)); }
         }
         
         function renderPagination(pagination) {
@@ -2177,8 +2179,8 @@
             
             let html = `<span style="color:#5a6a7e;font-size:0.8125rem;margin-right:0.75rem;">${total.toLocaleString()} traders · Page ${page}/${totalPages}</span>`;
             
-            html += `<button onclick="loadLeaderboard(1)" ${page===1?'disabled':''}>«</button>`;
-            html += `<button onclick="loadLeaderboard(${page-1})" ${!hasPrev?'disabled':''}>‹</button>`;
+            html += `<button onclick="loadLeaderboard(1, true)" ${page===1?'disabled':''}>«</button>`;
+            html += `<button onclick="loadLeaderboard(${page-1}, true)" ${!hasPrev?'disabled':''}>‹</button>`;
             
             let pages = [];
             if (totalPages <= 7) {
@@ -2197,12 +2199,12 @@
                 if (p === '...') {
                     html += `<span style="color:#5a6a7e;padding:0 0.25rem;">…</span>`;
                 } else {
-                    html += `<button onclick="loadLeaderboard(${p})" class="${p===page?'pg-active':''}">${p}</button>`;
+                    html += `<button onclick="loadLeaderboard(${p}, true)" class="${p===page?'pg-active':''}">${p}</button>`;
                 }
             });
             
-            html += `<button onclick="loadLeaderboard(${page+1})" ${!hasNext?'disabled':''}>›</button>`;
-            html += `<button onclick="loadLeaderboard(${totalPages})" ${page===totalPages?'disabled':''}>»</button>`;
+            html += `<button onclick="loadLeaderboard(${page+1}, true)" ${!hasNext?'disabled':''}>›</button>`;
+            html += `<button onclick="loadLeaderboard(${totalPages}, true)" ${page===totalPages?'disabled':''}>»</button>`;
             
             container.innerHTML = html;
         }
